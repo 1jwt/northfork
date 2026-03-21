@@ -1,0 +1,1135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Pet Rock</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+    :root {
+      --bg: #c4cfa1;
+      --fg: #1a1a1a;
+      --mid: #5a5a4a;
+      --light: #d8e0b8;
+    }
+
+    /* Gameboy Green */
+    [data-theme="gameboy"] {
+      --bg: #c4cfa1;
+      --fg: #1a1a1a;
+      --mid: #5a5a4a;
+      --light: #d8e0b8;
+    }
+
+    /* Tokyo Night */
+    [data-theme="tokyo"] {
+      --bg: #1a1b26;
+      --fg: #c0caf5;
+      --mid: #565f89;
+      --light: #24283b;
+    }
+
+    /* Cowboy Western */
+    [data-theme="western"] {
+      --bg: #d4a574;
+      --fg: #3d2314;
+      --mid: #8b5a2b;
+      --light: #e8c9a0;
+    }
+
+    /* Monochrome */
+    [data-theme="mono"] {
+      --bg: #e8e8e8;
+      --fg: #1a1a1a;
+      --mid: #888888;
+      --light: #ffffff;
+    }
+
+    /* Theme Toggle */
+    .theme-toggle {
+      display: flex;
+      justify-content: center;
+      gap: 6px;
+      padding: 8px 0;
+    }
+
+    .theme-btn {
+      width: 28px;
+      height: 28px;
+      border: 2px solid var(--fg);
+      cursor: pointer;
+      transition: transform 0.1s;
+      position: relative;
+    }
+
+    .theme-btn:hover {
+      transform: scale(1.1);
+    }
+
+    .theme-btn.active::after {
+      content: '';
+      position: absolute;
+      top: -6px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 0;
+      height: 0;
+      border-left: 5px solid transparent;
+      border-right: 5px solid transparent;
+      border-top: 5px solid var(--fg);
+    }
+
+    .theme-btn[data-theme="gameboy"] {
+      background: linear-gradient(135deg, #c4cfa1 50%, #5a5a4a 50%);
+    }
+
+    .theme-btn[data-theme="tokyo"] {
+      background: linear-gradient(135deg, #1a1b26 50%, #c0caf5 50%);
+    }
+
+    .theme-btn[data-theme="western"] {
+      background: linear-gradient(135deg, #d4a574 50%, #3d2314 50%);
+    }
+
+    .theme-btn[data-theme="mono"] {
+      background: linear-gradient(135deg, #e8e8e8 50%, #1a1a1a 50%);
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html, body {
+      height: 100%;
+    }
+
+    body {
+      font-family: 'Press Start 2P', cursive;
+      background: var(--bg);
+      color: var(--fg);
+      min-height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px;
+      line-height: 1.6;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 400px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    h1 {
+      font-size: 14px;
+      text-align: center;
+      padding: 12px 0;
+      border-bottom: 3px solid var(--fg);
+      letter-spacing: 2px;
+    }
+
+    /* Stats */
+    .stats {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .stat {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 8px;
+    }
+
+    .stat-label {
+      width: 48px;
+    }
+
+    .stat-bar {
+      flex: 1;
+      height: 12px;
+      background: var(--light);
+      border: 2px solid var(--fg);
+      position: relative;
+    }
+
+    .stat-fill {
+      height: 100%;
+      background: var(--fg);
+      transition: width 0.3s ease;
+    }
+
+    .stat-fill.critical {
+      animation: blink 0.5s infinite;
+    }
+
+    @keyframes blink {
+      50% { opacity: 0.3; }
+    }
+
+    /* Rock display */
+    .rock-area {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 24px 0;
+      border: 3px solid var(--fg);
+      background: var(--light);
+      position: relative;
+      min-height: 200px;
+    }
+
+    .rock-name {
+      font-size: 12px;
+      margin-bottom: 16px;
+      letter-spacing: 1px;
+    }
+
+    .rock-sprite {
+      width: 80px;
+      height: 80px;
+      position: relative;
+    }
+
+    /* Pixel rock using box-shadow */
+    .rock-pixel {
+      width: 8px;
+      height: 8px;
+      background: var(--fg);
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      box-shadow:
+        -16px -16px 0 var(--mid),
+        -8px -16px 0 var(--mid),
+        0px -16px 0 var(--mid),
+        8px -16px 0 var(--mid),
+        -24px -8px 0 var(--mid),
+        -16px -8px 0 var(--fg),
+        -8px -8px 0 var(--fg),
+        0px -8px 0 var(--mid),
+        8px -8px 0 var(--mid),
+        16px -8px 0 var(--mid),
+        -24px 0px 0 var(--mid),
+        -16px 0px 0 var(--fg),
+        -8px 0px 0 var(--fg),
+        0px 0px 0 var(--fg),
+        8px 0px 0 var(--mid),
+        16px 0px 0 var(--mid),
+        -16px 8px 0 var(--mid),
+        -8px 8px 0 var(--fg),
+        0px 8px 0 var(--mid),
+        8px 8px 0 var(--mid),
+        -8px 16px 0 var(--mid),
+        0px 16px 0 var(--mid);
+    }
+
+    /* Eyes */
+    .rock-eyes {
+      position: absolute;
+      top: 25%;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 20px;
+    }
+
+    .eye {
+      width: 10px;
+      height: 10px;
+      background: var(--bg);
+      border: 2px solid var(--fg);
+      position: relative;
+    }
+
+    .eye::after {
+      content: '';
+      position: absolute;
+      width: 4px;
+      height: 4px;
+      background: var(--fg);
+      bottom: 1px;
+      left: 50%;
+      transform: translateX(-50%);
+      transition: all 0.2s;
+    }
+
+    .rock-sprite.happy .eye::after {
+      height: 2px;
+      bottom: 4px;
+    }
+
+    .rock-sprite.sad .eye::after {
+      top: 1px;
+      bottom: auto;
+    }
+
+    .rock-sprite.sleeping .eye {
+      height: 3px;
+      background: var(--fg);
+    }
+
+    .rock-sprite.sleeping .eye::after {
+      display: none;
+    }
+
+    /* Dirt particles */
+    .dirt-particles {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+    }
+
+    .dirt {
+      position: absolute;
+      width: 6px;
+      height: 6px;
+      background: var(--mid);
+      opacity: 0;
+    }
+
+    .rock-sprite.dirty .dirt { opacity: 1; }
+
+    .dirt:nth-child(1) { top: 15%; left: 10%; }
+    .dirt:nth-child(2) { top: 35%; left: 85%; }
+    .dirt:nth-child(3) { top: 75%; left: 20%; }
+    .dirt:nth-child(4) { top: 65%; left: 75%; }
+    .dirt:nth-child(5) { top: 25%; left: 55%; }
+
+    /* Sparkles */
+    .sparkles {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+    }
+
+    .sparkle {
+      position: absolute;
+      width: 8px;
+      height: 8px;
+      opacity: 0;
+    }
+
+    .rock-sprite.polished .sparkle {
+      opacity: 1;
+      animation: sparkle 1.2s infinite;
+    }
+
+    .sparkle::before,
+    .sparkle::after {
+      content: '';
+      position: absolute;
+      background: var(--fg);
+    }
+
+    .sparkle::before {
+      width: 2px;
+      height: 8px;
+      left: 3px;
+    }
+
+    .sparkle::after {
+      width: 8px;
+      height: 2px;
+      top: 3px;
+    }
+
+    .sparkle:nth-child(1) { top: 0; left: 5%; animation-delay: 0s; }
+    .sparkle:nth-child(2) { top: 10%; left: 90%; animation-delay: 0.4s; }
+    .sparkle:nth-child(3) { top: 80%; left: 0; animation-delay: 0.8s; }
+
+    @keyframes sparkle {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.2; transform: scale(0.5); }
+    }
+
+    /* ZZZ */
+    .zzz {
+      position: absolute;
+      top: 0;
+      right: 0;
+      font-size: 10px;
+      opacity: 0;
+    }
+
+    .rock-sprite.sleeping .zzz {
+      opacity: 1;
+      animation: float-zzz 2s infinite;
+    }
+
+    @keyframes float-zzz {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-8px); opacity: 0.5; }
+    }
+
+    /* Message */
+    .message-box {
+      border: 3px solid var(--fg);
+      padding: 12px;
+      font-size: 8px;
+      min-height: 48px;
+      line-height: 1.8;
+    }
+
+    /* Action buttons */
+    .actions {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+
+    .action-btn {
+      font-family: 'Press Start 2P', cursive;
+      font-size: 8px;
+      padding: 12px 8px;
+      background: var(--bg);
+      border: 3px solid var(--fg);
+      cursor: pointer;
+      transition: all 0.1s;
+      text-transform: uppercase;
+    }
+
+    .action-btn:hover {
+      background: var(--fg);
+      color: var(--bg);
+    }
+
+    .action-btn:active {
+      transform: scale(0.95);
+    }
+
+    /* Info row */
+    .info-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 7px;
+      padding-top: 8px;
+      border-top: 2px solid var(--fg);
+      color: var(--mid);
+    }
+
+    /* Naming overlay */
+    .overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: var(--bg);
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      z-index: 100;
+    }
+
+    .overlay.active {
+      display: flex;
+    }
+
+    .overlay-content {
+      width: 100%;
+      max-width: 400px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 24px;
+    }
+
+    .overlay h2 {
+      font-size: 12px;
+      text-align: center;
+    }
+
+    .name-input {
+      font-family: 'Press Start 2P', cursive;
+      font-size: 16px;
+      padding: 12px 16px;
+      background: var(--light);
+      border: 3px solid var(--fg);
+      color: var(--fg);
+      text-align: center;
+      width: 100%;
+      max-width: 240px;
+      text-transform: uppercase;
+    }
+
+    .name-input:focus {
+      outline: none;
+      background: var(--bg);
+    }
+
+    .name-input::placeholder {
+      color: var(--mid);
+    }
+
+    .confirm-btn {
+      font-family: 'Press Start 2P', cursive;
+      font-size: 10px;
+      padding: 14px 32px;
+      background: var(--fg);
+      color: var(--bg);
+      border: none;
+      cursor: pointer;
+    }
+
+    .confirm-btn:hover {
+      background: var(--mid);
+    }
+
+    .confirm-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    /* Walk overlay */
+    .walk-scene {
+      width: 100%;
+      max-width: 400px;
+      aspect-ratio: 16 / 9;
+      border: 3px solid var(--fg);
+      position: relative;
+      overflow: hidden;
+      background: var(--light);
+    }
+
+    .walk-sky {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 60%;
+      background: var(--bg);
+    }
+
+    .walk-ground {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 40%;
+      background: var(--mid);
+    }
+
+    .walk-path {
+      position: absolute;
+      bottom: 30%;
+      left: 0;
+      right: 0;
+      height: 6px;
+      background: var(--fg);
+    }
+
+    .walk-rock {
+      position: absolute;
+      bottom: 35%;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 20px;
+      height: 16px;
+      background: var(--fg);
+      border-radius: 40% 40% 30% 30%;
+    }
+
+    .walk-rock::before,
+    .walk-rock::after {
+      content: '';
+      position: absolute;
+      width: 4px;
+      height: 4px;
+      background: var(--bg);
+      top: 4px;
+    }
+
+    .walk-rock::before { left: 4px; }
+    .walk-rock::after { right: 4px; }
+
+    .walk-tree {
+      position: absolute;
+      bottom: 38%;
+    }
+
+    .walk-tree-trunk {
+      width: 6px;
+      height: 16px;
+      background: var(--fg);
+      margin: 0 auto;
+    }
+
+    .walk-tree-top {
+      width: 24px;
+      height: 24px;
+      background: var(--mid);
+      border-radius: 50%;
+      margin-bottom: -3px;
+    }
+
+    .walk-cloud {
+      position: absolute;
+      background: var(--light);
+      border-radius: 20px;
+      animation: cloud-drift 25s linear infinite;
+    }
+
+    @keyframes cloud-drift {
+      from { transform: translateX(-60px); }
+      to { transform: translateX(450px); }
+    }
+
+    .walk-progress-bar {
+      position: absolute;
+      bottom: 8px;
+      left: 8px;
+      right: 8px;
+      height: 10px;
+      background: var(--bg);
+      border: 2px solid var(--fg);
+    }
+
+    .walk-progress-fill {
+      height: 100%;
+      background: var(--fg);
+      transition: width 0.1s linear;
+    }
+
+    .walk-label {
+      margin-top: 12px;
+      font-size: 8px;
+    }
+
+    /* Animations */
+    .bounce {
+      animation: bounce 0.4s ease;
+    }
+
+    @keyframes bounce {
+      0%, 100% { transform: translateY(0); }
+      40% { transform: translateY(-12px); }
+    }
+
+    .wiggle {
+      animation: wiggle 0.3s ease;
+    }
+
+    @keyframes wiggle {
+      0%, 100% { transform: rotate(0); }
+      25% { transform: rotate(-5deg); }
+      75% { transform: rotate(5deg); }
+    }
+
+    /* Responsive */
+    @media (max-width: 420px) {
+      body {
+        padding: 12px;
+      }
+
+      .actions {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .action-btn {
+        padding: 14px 8px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>PET ROCK</h1>
+
+    <div class="theme-toggle">
+      <button class="theme-btn active" data-theme="gameboy" title="Gameboy"></button>
+      <button class="theme-btn" data-theme="tokyo" title="Tokyo Night"></button>
+      <button class="theme-btn" data-theme="western" title="Western"></button>
+      <button class="theme-btn" data-theme="mono" title="Mono"></button>
+    </div>
+
+    <div class="stats">
+      <div class="stat">
+        <span class="stat-label">FOOD</span>
+        <div class="stat-bar">
+          <div class="stat-fill" id="hungerBar"></div>
+        </div>
+      </div>
+      <div class="stat">
+        <span class="stat-label">CLEAN</span>
+        <div class="stat-bar">
+          <div class="stat-fill" id="cleanBar"></div>
+        </div>
+      </div>
+      <div class="stat">
+        <span class="stat-label">SHINE</span>
+        <div class="stat-bar">
+          <div class="stat-fill" id="polishBar"></div>
+        </div>
+      </div>
+      <div class="stat">
+        <span class="stat-label">HAPPY</span>
+        <div class="stat-bar">
+          <div class="stat-fill" id="happyBar"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="rock-area">
+      <div class="rock-name" id="rockName">ROCKY</div>
+      <div class="rock-sprite" id="rockSprite">
+        <div class="rock-pixel"></div>
+        <div class="rock-eyes">
+          <div class="eye"></div>
+          <div class="eye"></div>
+        </div>
+        <div class="dirt-particles">
+          <div class="dirt"></div>
+          <div class="dirt"></div>
+          <div class="dirt"></div>
+          <div class="dirt"></div>
+          <div class="dirt"></div>
+        </div>
+        <div class="sparkles">
+          <div class="sparkle"></div>
+          <div class="sparkle"></div>
+          <div class="sparkle"></div>
+        </div>
+        <span class="zzz">Z z z</span>
+      </div>
+    </div>
+
+    <div class="message-box">
+      <span id="messageText">Your pet rock awaits...</span>
+    </div>
+
+    <div class="actions">
+      <button class="action-btn" data-action="feed">Feed</button>
+      <button class="action-btn" data-action="wash">Wash</button>
+      <button class="action-btn" data-action="polish">Polish</button>
+      <button class="action-btn" data-action="walk">Walk</button>
+      <button class="action-btn" data-action="sleep">Sleep</button>
+      <button class="action-btn" data-action="rename">Rename</button>
+    </div>
+
+    <div class="info-row">
+      <span id="ageDisplay">AGE: 0 DAYS</span>
+      <span id="walkDisplay">WALKS: 0</span>
+    </div>
+  </div>
+
+  <!-- Naming Overlay -->
+  <div class="overlay" id="namingOverlay">
+    <div class="overlay-content">
+      <h2>NAME YOUR ROCK</h2>
+      <input 
+        type="text" 
+        class="name-input" 
+        id="nameInput" 
+        maxlength="10" 
+        placeholder="TYPE A NAME"
+        autocomplete="off"
+        autocapitalize="characters"
+      >
+      <button class="confirm-btn" id="confirmName">OK</button>
+    </div>
+  </div>
+
+  <!-- Walk Overlay -->
+  <div class="overlay" id="walkOverlay">
+    <div class="overlay-content">
+      <h2>GOING FOR A WALK</h2>
+      <div class="walk-scene">
+        <div class="walk-sky"></div>
+        <div class="walk-cloud" style="width: 36px; height: 14px; top: 15%; left: -40px;"></div>
+        <div class="walk-cloud" style="width: 28px; height: 10px; top: 25%; left: -40px; animation-delay: -8s;"></div>
+        <div class="walk-tree" style="left: 12%;">
+          <div class="walk-tree-top"></div>
+          <div class="walk-tree-trunk"></div>
+        </div>
+        <div class="walk-tree" style="left: 78%;">
+          <div class="walk-tree-top"></div>
+          <div class="walk-tree-trunk"></div>
+        </div>
+        <div class="walk-ground"></div>
+        <div class="walk-path"></div>
+        <div class="walk-rock" id="walkRock"></div>
+        <div class="walk-progress-bar">
+          <div class="walk-progress-fill" id="walkProgressFill"></div>
+        </div>
+      </div>
+      <div class="walk-label" id="walkLabel">TAP OR PRESS SPACE TO WALK FASTER</div>
+    </div>
+  </div>
+
+  <script>
+    // ============================================
+    // STATE
+    // ============================================
+    const defaultState = {
+      name: '',
+      hunger: 100,
+      cleanliness: 100,
+      polish: 100,
+      happiness: 100,
+      isSleeping: false,
+      lastUpdate: Date.now(),
+      created: Date.now(),
+      totalWalks: 0,
+      theme: 'gameboy'
+    };
+
+    let state = { ...defaultState };
+    let walkProgress = 0;
+    let walkInterval = null;
+
+    // ============================================
+    // PERSISTENCE
+    // ============================================
+    function save() {
+      state.lastUpdate = Date.now();
+      localStorage.setItem('petRock', JSON.stringify(state));
+    }
+
+    function load() {
+      try {
+        const saved = localStorage.getItem('petRock');
+        if (saved) {
+          state = { ...defaultState, ...JSON.parse(saved) };
+          applyDecay();
+          return true;
+        }
+      } catch (e) {
+        console.error('Failed to load save data:', e);
+        localStorage.removeItem('petRock');
+      }
+      return false;
+    }
+
+    function applyDecay() {
+      const hours = (Date.now() - state.lastUpdate) / (1000 * 60 * 60);
+      
+      state.hunger = Math.max(0, state.hunger - hours * 4);
+      state.cleanliness = Math.max(0, state.cleanliness - hours * 3);
+      state.polish = Math.max(0, state.polish - hours * 2);
+      
+      updateHappiness();
+      state.lastUpdate = Date.now();
+      save();
+    }
+
+    function updateHappiness() {
+      state.happiness = Math.max(0, Math.min(100, 
+        (state.hunger + state.cleanliness + state.polish) / 3
+      ));
+    }
+
+    // ============================================
+    // UI
+    // ============================================
+    function updateUI() {
+      // Stat bars
+      setBar('hungerBar', state.hunger);
+      setBar('cleanBar', state.cleanliness);
+      setBar('polishBar', state.polish);
+      setBar('happyBar', state.happiness);
+
+      // Name
+      document.getElementById('rockName').textContent = state.name || 'ROCKY';
+
+      // Rock appearance
+      const sprite = document.getElementById('rockSprite');
+      sprite.className = 'rock-sprite';
+
+      if (state.isSleeping) {
+        sprite.classList.add('sleeping');
+      } else if (state.happiness > 70) {
+        sprite.classList.add('happy');
+      } else if (state.happiness < 30) {
+        sprite.classList.add('sad');
+      }
+
+      if (state.cleanliness < 40) sprite.classList.add('dirty');
+      if (state.polish > 80) sprite.classList.add('polished');
+
+      // Info
+      const days = Math.floor((Date.now() - state.created) / (1000 * 60 * 60 * 24));
+      document.getElementById('ageDisplay').textContent = `AGE: ${days} DAY${days !== 1 ? 'S' : ''}`;
+      document.getElementById('walkDisplay').textContent = `WALKS: ${state.totalWalks}`;
+    }
+
+    function setBar(id, value) {
+      const bar = document.getElementById(id);
+      bar.style.width = `${value}%`;
+      bar.classList.toggle('critical', value < 20);
+    }
+
+    function showMessage(text) {
+      document.getElementById('messageText').textContent = text;
+    }
+
+    function animateRock(type) {
+      const sprite = document.getElementById('rockSprite');
+      sprite.classList.remove('bounce', 'wiggle');
+      void sprite.offsetWidth;
+      sprite.classList.add(type);
+    }
+
+    // ============================================
+    // ACTIONS
+    // ============================================
+    const messages = {
+      feed: [
+        '${name} crunches some gravel!',
+        'Mmm, mineral dust!',
+        '${name} feels satisfied.',
+        '*munch munch munch*'
+      ],
+      wash: [
+        '${name} is squeaky clean!',
+        'Splish splash!',
+        'All the dirt washed away.',
+        '${name} shines with cleanliness!'
+      ],
+      polish: [
+        '${name} gleams brilliantly!',
+        'So shiny!',
+        '${name} sparkles like a gem!',
+        'Maximum shine achieved!'
+      ],
+      walk: [
+        '${name} loved that walk!',
+        'Great exercise!',
+        '${name} saw so many things!',
+        'A refreshing stroll.'
+      ]
+    };
+
+    function randomMsg(type) {
+      const list = messages[type];
+      const msg = list[Math.floor(Math.random() * list.length)];
+      return msg.replace('${name}', state.name || 'ROCKY');
+    }
+
+    const actions = {
+      feed() {
+        if (state.isSleeping) {
+          showMessage(`${state.name} is sleeping...`);
+          return;
+        }
+        state.hunger = Math.min(100, state.hunger + 25);
+        updateHappiness();
+        save();
+        updateUI();
+        animateRock('bounce');
+        showMessage(randomMsg('feed'));
+      },
+
+      wash() {
+        if (state.isSleeping) {
+          showMessage(`${state.name} is sleeping...`);
+          return;
+        }
+        state.cleanliness = Math.min(100, state.cleanliness + 30);
+        updateHappiness();
+        save();
+        updateUI();
+        animateRock('wiggle');
+        showMessage(randomMsg('wash'));
+      },
+
+      polish() {
+        if (state.isSleeping) {
+          showMessage(`${state.name} is sleeping...`);
+          return;
+        }
+        state.polish = Math.min(100, state.polish + 35);
+        updateHappiness();
+        save();
+        updateUI();
+        animateRock('wiggle');
+        showMessage(randomMsg('polish'));
+      },
+
+      walk() {
+        if (state.isSleeping) {
+          state.isSleeping = false;
+          showMessage(`${state.name} woke up for a walk!`);
+        }
+        startWalk();
+      },
+
+      sleep() {
+        state.isSleeping = !state.isSleeping;
+        save();
+        updateUI();
+        showMessage(state.isSleeping 
+          ? `${state.name} is napping... Zzz` 
+          : `${state.name} woke up refreshed!`
+        );
+      },
+
+      rename() {
+        openNaming();
+      }
+    };
+
+    // ============================================
+    // WALK
+    // ============================================
+    function startWalk() {
+      walkProgress = 0;
+      document.getElementById('walkOverlay').classList.add('active');
+      document.getElementById('walkProgressFill').style.width = '0%';
+
+      walkInterval = setInterval(() => {
+        walkProgress += 1.5;
+        document.getElementById('walkProgressFill').style.width = `${walkProgress}%`;
+
+        // Bob the rock
+        const rock = document.getElementById('walkRock');
+        rock.style.transform = `translateX(-50%) translateY(${Math.sin(walkProgress / 4) * 3}px)`;
+
+        if (walkProgress >= 100) endWalk();
+      }, 80);
+    }
+
+    function boostWalk() {
+      walkProgress = Math.min(100, walkProgress + 4);
+      document.getElementById('walkProgressFill').style.width = `${walkProgress}%`;
+    }
+
+    function endWalk() {
+      clearInterval(walkInterval);
+      state.totalWalks++;
+      state.happiness = Math.min(100, state.happiness + 15);
+      state.hunger = Math.max(0, state.hunger - 8);
+      save();
+
+      document.getElementById('walkOverlay').classList.remove('active');
+      updateUI();
+      showMessage(randomMsg('walk'));
+    }
+
+    // Walk input handlers
+    document.getElementById('walkOverlay').addEventListener('click', boostWalk);
+    document.addEventListener('keydown', (e) => {
+      if (document.getElementById('walkOverlay').classList.contains('active') && e.code === 'Space') {
+        e.preventDefault();
+        boostWalk();
+      }
+    });
+
+    // ============================================
+    // NAMING
+    // ============================================
+    function openNaming() {
+      const overlay = document.getElementById('namingOverlay');
+      const input = document.getElementById('nameInput');
+      overlay.classList.add('active');
+      input.value = state.name;
+      setTimeout(() => input.focus(), 100);
+    }
+
+    function closeNaming() {
+      document.getElementById('namingOverlay').classList.remove('active');
+    }
+
+    function confirmName() {
+      const input = document.getElementById('nameInput');
+      const name = input.value.trim().toUpperCase();
+      if (name) {
+        state.name = name;
+        save();
+        closeNaming();
+        updateUI();
+        showMessage(`Hello, ${state.name}!`);
+      }
+    }
+
+    document.getElementById('confirmName').addEventListener('click', confirmName);
+    document.getElementById('nameInput').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') confirmName();
+    });
+    document.getElementById('nameInput').addEventListener('input', (e) => {
+      e.target.value = e.target.value.toUpperCase();
+    });
+
+    // ============================================
+    // THEME
+    // ============================================
+    function setTheme(theme, skipSave = false) {
+      document.documentElement.setAttribute('data-theme', theme);
+      document.querySelectorAll('.theme-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.theme === theme);
+      });
+      state.theme = theme;
+      if (!skipSave) save();
+    }
+
+    document.querySelectorAll('.theme-btn').forEach(btn => {
+      btn.addEventListener('click', () => setTheme(btn.dataset.theme));
+    });
+
+    // ============================================
+    // ACTION BUTTONS
+    // ============================================
+    document.querySelectorAll('.action-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const action = btn.dataset.action;
+        if (actions[action]) actions[action]();
+      });
+    });
+
+    // ============================================
+    // GAME LOOP
+    // ============================================
+    function tick() {
+      if (!state.isSleeping) {
+        state.hunger = Math.max(0, state.hunger - 0.008);
+        state.cleanliness = Math.max(0, state.cleanliness - 0.006);
+        state.polish = Math.max(0, state.polish - 0.004);
+        updateHappiness();
+      }
+      updateUI();
+      save();
+    }
+
+    // ============================================
+    // INIT
+    // ============================================
+    function init() {
+      const hasData = load();
+
+      // Apply saved theme (skip save to avoid issues on first load)
+      setTheme(state.theme || 'gameboy', true);
+
+      if (!hasData || !state.name) {
+        openNaming();
+        showMessage('Give your rock a name!');
+      } else {
+        updateUI();
+        if (state.hunger < 30) {
+          showMessage(`${state.name} is very hungry!`);
+        } else if (state.cleanliness < 30) {
+          showMessage(`${state.name} needs a wash!`);
+        } else if (state.happiness > 70) {
+          showMessage(`${state.name} is happy to see you!`);
+        } else {
+          showMessage(`Welcome back! ${state.name} missed you.`);
+        }
+      }
+
+      setInterval(tick, 1000);
+    }
+
+    init();
+  </script>
+</body>
+</html>
