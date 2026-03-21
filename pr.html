@@ -8,18 +8,10 @@
     @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
 
     :root {
-      --bg: #c4cfa1;
-      --fg: #1a1a1a;
-      --mid: #5a5a4a;
-      --light: #d8e0b8;
-    }
-
-    /* Gameboy Green */
-    [data-theme="gameboy"] {
-      --bg: #c4cfa1;
-      --fg: #1a1a1a;
-      --mid: #5a5a4a;
-      --light: #d8e0b8;
+      --bg: #1a1b26;
+      --fg: #c0caf5;
+      --mid: #565f89;
+      --light: #24283b;
     }
 
     /* Tokyo Night */
@@ -78,10 +70,6 @@
       border-left: 5px solid transparent;
       border-right: 5px solid transparent;
       border-top: 5px solid var(--fg);
-    }
-
-    .theme-btn[data-theme="gameboy"] {
-      background: linear-gradient(135deg, #c4cfa1 50%, #5a5a4a 50%);
     }
 
     .theme-btn[data-theme="tokyo"] {
@@ -391,8 +379,9 @@
       font-family: 'Press Start 2P', cursive;
       font-size: 8px;
       padding: 12px 8px;
-      background: var(--bg);
+      background: var(--light);
       border: 3px solid var(--fg);
+      color: var(--fg);
       cursor: pointer;
       transition: all 0.1s;
       text-transform: uppercase;
@@ -648,8 +637,7 @@
     <h1>PET ROCK</h1>
 
     <div class="theme-toggle">
-      <button class="theme-btn active" data-theme="gameboy" title="Gameboy"></button>
-      <button class="theme-btn" data-theme="tokyo" title="Tokyo Night"></button>
+      <button class="theme-btn active" data-theme="tokyo" title="Tokyo Night"></button>
       <button class="theme-btn" data-theme="western" title="Western"></button>
       <button class="theme-btn" data-theme="mono" title="Mono"></button>
     </div>
@@ -782,7 +770,7 @@
       lastUpdate: Date.now(),
       created: Date.now(),
       totalWalks: 0,
-      theme: 'gameboy'
+      theme: 'tokyo'
     };
 
     let state = { ...defaultState };
@@ -1108,7 +1096,7 @@
       const hasData = load();
 
       // Apply saved theme (skip save to avoid issues on first load)
-      setTheme(state.theme || 'gameboy', true);
+      setTheme(state.theme || 'tokyo', true);
 
       if (!hasData || !state.name) {
         openNaming();
