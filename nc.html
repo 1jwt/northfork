@@ -1,0 +1,1065 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Northfork Notes – Case Study</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Crimson+Pro:ital,wght@0,400;0,500;0,600;1,400&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --ink: #1a1a1a;
+      --paper: #fdfcfa;
+      --cream: #f5f3ef;
+      --muted: #6b6b6b;
+      --accent: #2d5a4a;
+      --accent-light: #e8f0ec;
+      --border: #e5e2dc;
+      --shadow: rgba(26, 26, 26, 0.06);
+      --serif: 'Crimson Pro', Georgia, serif;
+      --sans: 'DM Sans', -apple-system, sans-serif;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      font-family: var(--sans);
+      background: var(--paper);
+      color: var(--ink);
+      line-height: 1.7;
+      font-size: 16px;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Noise texture overlay */
+    body::before {
+      content: '';
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      opacity: 0.015;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%' height='100%' filter='url(%23noise)'/%3E%3C/svg%3E");
+      z-index: 9999;
+    }
+
+    /* Hero Section */
+    .hero {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 4rem 2rem;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      right: -20%;
+      width: 80%;
+      height: 150%;
+      background: radial-gradient(ellipse at center, var(--accent-light) 0%, transparent 70%);
+      opacity: 0.5;
+      z-index: 0;
+    }
+
+    .hero-content {
+      max-width: 900px;
+      margin: 0 auto;
+      position: relative;
+      z-index: 1;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: var(--cream);
+      border: 1px solid var(--border);
+      padding: 0.5rem 1rem;
+      border-radius: 2rem;
+      font-size: 0.85rem;
+      color: var(--muted);
+      margin-bottom: 2rem;
+      animation: fadeInUp 0.8s ease-out;
+    }
+
+    .badge-dot {
+      width: 6px;
+      height: 6px;
+      background: var(--accent);
+      border-radius: 50%;
+    }
+
+    .hero h1 {
+      font-family: var(--serif);
+      font-size: clamp(3rem, 8vw, 5.5rem);
+      font-weight: 400;
+      line-height: 1.1;
+      letter-spacing: -0.02em;
+      margin-bottom: 1.5rem;
+      animation: fadeInUp 0.8s ease-out 0.1s both;
+    }
+
+    .hero h1 em {
+      font-style: italic;
+      color: var(--accent);
+    }
+
+    .hero-subtitle {
+      font-size: 1.25rem;
+      color: var(--muted);
+      max-width: 600px;
+      margin-bottom: 3rem;
+      animation: fadeInUp 0.8s ease-out 0.2s both;
+    }
+
+    .hero-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 2rem;
+      animation: fadeInUp 0.8s ease-out 0.3s both;
+    }
+
+    .meta-item {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+
+    .meta-label {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--muted);
+    }
+
+    .meta-value {
+      font-family: var(--serif);
+      font-size: 1.1rem;
+    }
+
+    /* Section styles */
+    section {
+      padding: 6rem 2rem;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    .section-label {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+      color: var(--accent);
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .section-label::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    h2 {
+      font-family: var(--serif);
+      font-size: clamp(2rem, 5vw, 3rem);
+      font-weight: 400;
+      line-height: 1.2;
+      margin-bottom: 1.5rem;
+    }
+
+    p {
+      color: var(--muted);
+      margin-bottom: 1.5rem;
+    }
+
+    /* Overview Section */
+    .overview {
+      background: var(--cream);
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .overview-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 2rem;
+      margin-top: 3rem;
+    }
+
+    .overview-card {
+      background: var(--paper);
+      padding: 2rem;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .overview-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 12px 40px var(--shadow);
+    }
+
+    .overview-card h3 {
+      font-family: var(--serif);
+      font-size: 1.25rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .overview-card p {
+      font-size: 0.95rem;
+      margin-bottom: 0;
+    }
+
+    /* Problem/Solution */
+    .problem-solution {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 4rem;
+      margin-top: 3rem;
+    }
+
+    @media (max-width: 768px) {
+      .problem-solution {
+        grid-template-columns: 1fr;
+        gap: 3rem;
+      }
+    }
+
+    .ps-block h3 {
+      font-family: var(--serif);
+      font-size: 1.5rem;
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .ps-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1rem;
+    }
+
+    .ps-icon.problem {
+      background: #fef2f2;
+      color: #dc2626;
+    }
+
+    .ps-icon.solution {
+      background: var(--accent-light);
+      color: var(--accent);
+    }
+
+    /* Tech Stack */
+    .tech-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 1rem;
+      margin-top: 2rem;
+    }
+
+    .tech-item {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding: 1.25rem;
+      background: var(--cream);
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      transition: all 0.2s ease;
+    }
+
+    .tech-item:hover {
+      border-color: var(--accent);
+      background: var(--accent-light);
+    }
+
+    .tech-icon {
+      width: 40px;
+      height: 40px;
+      background: var(--paper);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+      color: var(--accent);
+      font-size: 0.9rem;
+    }
+
+    .tech-info h4 {
+      font-size: 0.95rem;
+      font-weight: 500;
+      margin-bottom: 0.1rem;
+    }
+
+    .tech-info span {
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+
+    /* Features Section */
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 1.5rem;
+      margin-top: 3rem;
+    }
+
+    @media (max-width: 600px) {
+      .features-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .feature-card {
+      padding: 2rem;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      position: relative;
+      overflow: hidden;
+      transition: all 0.3s ease;
+    }
+
+    .feature-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 4px;
+      height: 100%;
+      background: var(--accent);
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+
+    .feature-card:hover {
+      border-color: var(--accent);
+      box-shadow: 0 8px 30px var(--shadow);
+    }
+
+    .feature-card:hover::before {
+      opacity: 1;
+    }
+
+    .feature-number {
+      font-family: var(--serif);
+      font-size: 2.5rem;
+      color: var(--border);
+      line-height: 1;
+      margin-bottom: 1rem;
+    }
+
+    .feature-card h3 {
+      font-size: 1.1rem;
+      font-weight: 500;
+      margin-bottom: 0.5rem;
+    }
+
+    .feature-card p {
+      font-size: 0.9rem;
+      margin-bottom: 0;
+    }
+
+    /* Roadmap Section */
+    .roadmap {
+      background: var(--ink);
+      color: var(--paper);
+    }
+
+    .roadmap .section-label {
+      color: var(--accent-light);
+    }
+
+    .roadmap .section-label::after {
+      background: rgba(255,255,255,0.1);
+    }
+
+    .roadmap h2 {
+      color: var(--paper);
+    }
+
+    .roadmap p {
+      color: rgba(255,255,255,0.6);
+    }
+
+    .roadmap-timeline {
+      margin-top: 4rem;
+      position: relative;
+    }
+
+    .roadmap-timeline::before {
+      content: '';
+      position: absolute;
+      left: 16px;
+      top: 0;
+      bottom: 0;
+      width: 2px;
+      background: linear-gradient(to bottom, var(--accent), rgba(255,255,255,0.1));
+    }
+
+    .roadmap-item {
+      display: flex;
+      gap: 2rem;
+      margin-bottom: 3rem;
+      position: relative;
+    }
+
+    .roadmap-marker {
+      width: 34px;
+      height: 34px;
+      background: var(--ink);
+      border: 2px solid var(--accent);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      z-index: 1;
+    }
+
+    .roadmap-marker.completed {
+      background: var(--accent);
+    }
+
+    .roadmap-marker svg {
+      width: 16px;
+      height: 16px;
+      stroke: var(--paper);
+    }
+
+    .roadmap-content {
+      padding-top: 0.25rem;
+    }
+
+    .roadmap-phase {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--accent-light);
+      margin-bottom: 0.5rem;
+    }
+
+    .roadmap-content h3 {
+      font-family: var(--serif);
+      font-size: 1.5rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .roadmap-content p {
+      margin-bottom: 1rem;
+    }
+
+    .roadmap-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+
+    .roadmap-tag {
+      font-size: 0.75rem;
+      padding: 0.35rem 0.75rem;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 2rem;
+      color: rgba(255,255,255,0.7);
+    }
+
+    /* Learnings */
+    .learnings-list {
+      margin-top: 2rem;
+    }
+
+    .learning-item {
+      display: flex;
+      gap: 1.5rem;
+      padding: 1.5rem 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .learning-item:last-child {
+      border-bottom: none;
+    }
+
+    .learning-icon {
+      width: 48px;
+      height: 48px;
+      background: var(--accent-light);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .learning-icon svg {
+      width: 24px;
+      height: 24px;
+      stroke: var(--accent);
+    }
+
+    .learning-content h3 {
+      font-size: 1.1rem;
+      font-weight: 500;
+      margin-bottom: 0.5rem;
+    }
+
+    .learning-content p {
+      font-size: 0.95rem;
+      margin-bottom: 0;
+    }
+
+    /* CTA Section */
+    .cta {
+      text-align: center;
+      background: linear-gradient(180deg, var(--paper) 0%, var(--cream) 100%);
+    }
+
+    .cta h2 {
+      margin-bottom: 1rem;
+    }
+
+    .cta-buttons {
+      display: flex;
+      justify-content: center;
+      gap: 1rem;
+      margin-top: 2rem;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 1rem 2rem;
+      border-radius: 8px;
+      font-weight: 500;
+      text-decoration: none;
+      transition: all 0.2s ease;
+    }
+
+    .btn-primary {
+      background: var(--ink);
+      color: var(--paper);
+    }
+
+    .btn-primary:hover {
+      background: var(--accent);
+      transform: translateY(-2px);
+    }
+
+    .btn-secondary {
+      background: var(--paper);
+      color: var(--ink);
+      border: 1px solid var(--border);
+    }
+
+    .btn-secondary:hover {
+      border-color: var(--ink);
+      transform: translateY(-2px);
+    }
+
+    .btn svg {
+      width: 18px;
+      height: 18px;
+    }
+
+    /* Footer */
+    footer {
+      padding: 2rem;
+      text-align: center;
+      font-size: 0.85rem;
+      color: var(--muted);
+      border-top: 1px solid var(--border);
+    }
+
+    /* Animations */
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* Scroll animations */
+    .animate-on-scroll {
+      opacity: 0;
+      transform: translateY(30px);
+      transition: all 0.6s ease-out;
+    }
+
+    .animate-on-scroll.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Hero -->
+  <section class="hero">
+    <div class="hero-content">
+      <div class="badge">
+        <span class="badge-dot"></span>
+        Personal Project
+      </div>
+      <h1>Northfork <em>Notes</em></h1>
+      <p class="hero-subtitle">
+        A thoughtfully-crafted note-taking app built with intention. 
+        Designed as an aesthetic alternative to Notion and Obsidian, 
+        with serif typography and a focus on the writing experience.
+      </p>
+      <div class="hero-meta">
+        <div class="meta-item">
+          <span class="meta-label">Role</span>
+          <span class="meta-value">Solo Developer</span>
+        </div>
+        <div class="meta-item">
+          <span class="meta-label">Timeline</span>
+          <span class="meta-value">2025 – Present</span>
+        </div>
+        <div class="meta-item">
+          <span class="meta-label">Status</span>
+          <span class="meta-value">Active Development</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Overview -->
+  <section class="overview">
+    <div class="container">
+      <span class="section-label">Overview</span>
+      <h2>Building in public, learning in the open</h2>
+      <p>
+        Northfork Notes started as a personal project to create the note-taking app I actually wanted to use. 
+        Beyond that, it's been an exercise in full-stack development, product thinking, and understanding what 
+        it takes to ship software in a crowded market.
+      </p>
+      <div class="overview-grid">
+        <div class="overview-card animate-on-scroll">
+          <h3>Block-Based Editor</h3>
+          <p>Paragraphs, headings, todos, bullets, numbered lists, and code blocks with intuitive controls.</p>
+        </div>
+        <div class="overview-card animate-on-scroll">
+          <h3>Drag & Drop</h3>
+          <p>Reorder content blocks with optimistic UI updates, database sync, and rollback capability.</p>
+        </div>
+        <div class="overview-card animate-on-scroll">
+          <h3>Multi-Page Support</h3>
+          <p>Organize notes across multiple pages with a clean sidebar navigation and search.</p>
+        </div>
+        <div class="overview-card animate-on-scroll">
+          <h3>Mobile Responsive</h3>
+          <p>Auto-collapsing sidebar, touch-friendly targets, and proper overflow handling.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Problem & Solution -->
+  <section>
+    <div class="container">
+      <span class="section-label">Context</span>
+      <h2>Why build another notes app?</h2>
+      <div class="problem-solution">
+        <div class="ps-block animate-on-scroll">
+          <h3>
+            <span class="ps-icon problem">✕</span>
+            The Problem
+          </h3>
+          <p>
+            Most note-taking apps feel either overly complex (Notion's learning curve) or 
+            visually stark (Obsidian's markdown-first approach). I wanted something that 
+            felt intentional and beautiful by default—an app where the design itself 
+            encouraged focus and clear thinking.
+          </p>
+        </div>
+        <div class="ps-block animate-on-scroll">
+          <h3>
+            <span class="ps-icon solution">✓</span>
+            The Approach
+          </h3>
+          <p>
+            Northfork Notes prioritizes aesthetics and simplicity. Serif typography sets 
+            the tone. A clean, minimal interface removes distractions. Block-based editing 
+            provides flexibility without overwhelming options. Every design decision asks: 
+            "Does this help or hinder the writing experience?"
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Tech Stack -->
+  <section>
+    <div class="container">
+      <span class="section-label">Technology</span>
+      <h2>Built on a modern stack</h2>
+      <p>
+        Chose technologies that balance developer experience with production-readiness. 
+        The goal was to ship quickly while maintaining code quality and scalability.
+      </p>
+      <div class="tech-grid animate-on-scroll">
+        <div class="tech-item">
+          <div class="tech-icon">N</div>
+          <div class="tech-info">
+            <h4>Next.js 16</h4>
+            <span>React Framework</span>
+          </div>
+        </div>
+        <div class="tech-item">
+          <div class="tech-icon">C</div>
+          <div class="tech-info">
+            <h4>Clerk</h4>
+            <span>Authentication</span>
+          </div>
+        </div>
+        <div class="tech-item">
+          <div class="tech-icon">S</div>
+          <div class="tech-info">
+            <h4>Supabase</h4>
+            <span>Database & RLS</span>
+          </div>
+        </div>
+        <div class="tech-item">
+          <div class="tech-icon">UI</div>
+          <div class="tech-info">
+            <h4>shadcn/ui</h4>
+            <span>Component Library</span>
+          </div>
+        </div>
+        <div class="tech-item">
+          <div class="tech-icon">V</div>
+          <div class="tech-info">
+            <h4>Vercel</h4>
+            <span>Deployment</span>
+          </div>
+        </div>
+        <div class="tech-item">
+          <div class="tech-icon">TS</div>
+          <div class="tech-info">
+            <h4>TypeScript</h4>
+            <span>Type Safety</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Features Deep Dive -->
+  <section>
+    <div class="container">
+      <span class="section-label">Features</span>
+      <h2>What's been built so far</h2>
+      <div class="features-grid">
+        <div class="feature-card animate-on-scroll">
+          <div class="feature-number">01</div>
+          <h3>Block-Based Editing</h3>
+          <p>Six block types with inline formatting, keyboard shortcuts, and automatic block creation on Enter.</p>
+        </div>
+        <div class="feature-card animate-on-scroll">
+          <div class="feature-number">02</div>
+          <h3>Drag & Drop Reordering</h3>
+          <p>Optimistic UI updates with database sync and automatic rollback on failure.</p>
+        </div>
+        <div class="feature-card animate-on-scroll">
+          <div class="feature-number">03</div>
+          <h3>Dark Mode</h3>
+          <p>System-aware theme with manual toggle. Careful color choices for readability.</p>
+        </div>
+        <div class="feature-card animate-on-scroll">
+          <div class="feature-number">04</div>
+          <h3>Secure Auth</h3>
+          <p>Clerk-powered authentication with invitation-only access. Row Level Security via Supabase.</p>
+        </div>
+        <div class="feature-card animate-on-scroll">
+          <div class="feature-number">05</div>
+          <h3>Mobile-First Responsive</h3>
+          <p>Collapsible sidebar, touch-optimized controls, and proper viewport handling.</p>
+        </div>
+        <div class="feature-card animate-on-scroll">
+          <div class="feature-number">06</div>
+          <h3>Search & Navigation</h3>
+          <p>Quick page search and clean sidebar organization for managing multiple notes.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Roadmap -->
+  <section class="roadmap">
+    <div class="container">
+      <span class="section-label">Roadmap</span>
+      <h2>Where it's headed</h2>
+      <p>
+        A six-phase plan from MVP to monetization. Building in public means priorities 
+        shift based on user feedback and technical learnings.
+      </p>
+      <div class="roadmap-timeline">
+        <div class="roadmap-item">
+          <div class="roadmap-marker completed">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+          </div>
+          <div class="roadmap-content">
+            <div class="roadmap-phase">Phase 1 – Complete</div>
+            <h3>MVP & Authentication</h3>
+            <p>Core editor functionality, Clerk auth, Supabase integration, and responsive design.</p>
+            <div class="roadmap-tags">
+              <span class="roadmap-tag">Block Editor</span>
+              <span class="roadmap-tag">Drag & Drop</span>
+              <span class="roadmap-tag">Auth</span>
+              <span class="roadmap-tag">Mobile</span>
+            </div>
+          </div>
+        </div>
+        <div class="roadmap-item">
+          <div class="roadmap-marker">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="3"></circle>
+            </svg>
+          </div>
+          <div class="roadmap-content">
+            <div class="roadmap-phase">Phase 2 – In Progress</div>
+            <h3>Tasks & Kanban Module</h3>
+            <p>Separate task management view with Kanban boards, lists, and subtasks—similar to Google Tasks or Trello.</p>
+            <div class="roadmap-tags">
+              <span class="roadmap-tag">Kanban Board</span>
+              <span class="roadmap-tag">Subtasks</span>
+              <span class="roadmap-tag">List View</span>
+            </div>
+          </div>
+        </div>
+        <div class="roadmap-item">
+          <div class="roadmap-marker">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="3"></circle>
+            </svg>
+          </div>
+          <div class="roadmap-content">
+            <div class="roadmap-phase">Phase 3 – Planned</div>
+            <h3>Advanced Features</h3>
+            <p>Markdown export, keyboard shortcuts, undo/redo stack, and offline support.</p>
+            <div class="roadmap-tags">
+              <span class="roadmap-tag">Export</span>
+              <span class="roadmap-tag">Shortcuts</span>
+              <span class="roadmap-tag">Offline</span>
+            </div>
+          </div>
+        </div>
+        <div class="roadmap-item">
+          <div class="roadmap-marker">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="3"></circle>
+            </svg>
+          </div>
+          <div class="roadmap-content">
+            <div class="roadmap-phase">Phase 4 – Planned</div>
+            <h3>Collaboration</h3>
+            <p>Real-time multiplayer editing, shared workspaces, and commenting.</p>
+            <div class="roadmap-tags">
+              <span class="roadmap-tag">Real-time</span>
+              <span class="roadmap-tag">Workspaces</span>
+              <span class="roadmap-tag">Comments</span>
+            </div>
+          </div>
+        </div>
+        <div class="roadmap-item">
+          <div class="roadmap-marker">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="3"></circle>
+            </svg>
+          </div>
+          <div class="roadmap-content">
+            <div class="roadmap-phase">Phase 5 – Future</div>
+            <h3>Native Mobile Apps</h3>
+            <p>iOS and Android apps for a truly native mobile experience.</p>
+            <div class="roadmap-tags">
+              <span class="roadmap-tag">iOS</span>
+              <span class="roadmap-tag">Android</span>
+              <span class="roadmap-tag">Native</span>
+            </div>
+          </div>
+        </div>
+        <div class="roadmap-item">
+          <div class="roadmap-marker">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="3"></circle>
+            </svg>
+          </div>
+          <div class="roadmap-content">
+            <div class="roadmap-phase">Phase 6 – Future</div>
+            <h3>Monetization</h3>
+            <p>Freemium tiers via Stripe, potential lifetime purchase option, and team/B2B pricing.</p>
+            <div class="roadmap-tags">
+              <span class="roadmap-tag">Stripe</span>
+              <span class="roadmap-tag">Freemium</span>
+              <span class="roadmap-tag">Teams</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Learnings -->
+  <section>
+    <div class="container">
+      <span class="section-label">Learnings</span>
+      <h2>What I've learned building this</h2>
+      <div class="learnings-list">
+        <div class="learning-item animate-on-scroll">
+          <div class="learning-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
+              <path d="M2 17l10 5 10-5"></path>
+              <path d="M2 12l10 5 10-5"></path>
+            </svg>
+          </div>
+          <div class="learning-content">
+            <h3>The notes app market is saturated—distribution matters</h3>
+            <p>
+              Building a great product isn't enough. In a crowded space, tight niche positioning 
+              and strong distribution channels (Product Hunt, Indie Hackers) are essential for 
+              differentiation.
+            </p>
+          </div>
+        </div>
+        <div class="learning-item animate-on-scroll">
+          <div class="learning-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+              <line x1="8" y1="21" x2="16" y2="21"></line>
+              <line x1="12" y1="17" x2="12" y2="21"></line>
+            </svg>
+          </div>
+          <div class="learning-content">
+            <h3>Mobile responsiveness requires dedicated effort</h3>
+            <p>
+              "It works on mobile" isn't the same as "it's good on mobile." Touch targets, 
+              sidebar behavior, and viewport handling all needed dedicated attention.
+            </p>
+          </div>
+        </div>
+        <div class="learning-item animate-on-scroll">
+          <div class="learning-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+              <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+              <line x1="12" y1="22.08" x2="12" y2="12"></line>
+            </svg>
+          </div>
+          <div class="learning-content">
+            <h3>Optimistic UI transforms user experience</h3>
+            <p>
+              Drag-and-drop felt sluggish until I implemented optimistic updates with 
+              database sync and rollback. The perceived performance improvement was dramatic.
+            </p>
+          </div>
+        </div>
+        <div class="learning-item animate-on-scroll">
+          <div class="learning-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+              <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+            </svg>
+          </div>
+          <div class="learning-content">
+            <h3>Security practices need to be habits, not afterthoughts</h3>
+            <p>
+              Keeping secrets out of version control (proper .env.local usage, Vercel 
+              dashboard for deployment vars) needs to be automatic. Row Level Security 
+              in Supabase adds another essential layer.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section class="cta">
+    <div class="container">
+      <span class="section-label" style="justify-content: center;">Get Involved</span>
+      <h2>Interested in following along?</h2>
+      <p>
+        The project is open on GitHub and I'm building in public. 
+        Feedback, feature requests, and contributions are welcome.
+      </p>
+      <div class="cta-buttons">
+        <a href="https://github.com/1jwt/northfork-notes" class="btn btn-primary" target="_blank" rel="noopener">
+          <svg viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+          </svg>
+          View on GitHub
+        </a>
+        <a href="#" class="btn btn-secondary">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+            <polyline points="15 3 21 3 21 9"></polyline>
+            <line x1="10" y1="14" x2="21" y2="3"></line>
+          </svg>
+          Try the App
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <p>Built with intention. Northfork Notes © 2025</p>
+  </footer>
+
+  <script>
+    // Scroll animation observer
+    const observerOptions = {
+      threshold: 0.1,
+      rootMargin: '0px 0px -50px 0px'
+    };
+
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('visible');
+        }
+      });
+    }, observerOptions);
+
+    document.querySelectorAll('.animate-on-scroll').forEach(el => {
+      observer.observe(el);
+    });
+  </script>
+
+</body>
+</html>
