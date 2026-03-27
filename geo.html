@@ -902,7 +902,25 @@ async function fetchPage(url) {
 function extractContent(html) {
   const parser = new DOMParser();
   const doc = parser.parseFromString(html, 'text/html');
-  doc.querySelectorAll('script, style, nav, footer, iframe, noscript, svg, aside').forEach(el => el.remove());
+
+  // Extract JSON-LD BEFORE removing scripts
+  const jsonLdRaw = [...doc.querySelectorAll('script[type="application/ld+json"]')]
+    .map(s => { try { return JSON.parse(s.textContent); } catch { return null; } }).filter(Boolean);
+
+  // Flatten @graph arrays (common in Yoast, Rank Math, etc.)
+  const jsonLd = [];
+  for (const item of jsonLdRaw) {
+    if (item['@graph'] && Array.isArray(item['@graph'])) {
+      jsonLd.push(...item['@graph']);
+    } else if (Array.isArray(item)) {
+      jsonLd.push(...item);
+    } else {
+      jsonLd.push(item);
+    }
+  }
+
+  // Now remove noise elements
+  doc.querySelectorAll('script, style, iframe, noscript, svg').forEach(el => el.remove());
 
   const title = doc.querySelector('title')?.textContent?.trim() || '';
   const metaDesc = doc.querySelector('meta[name="description"]')?.getAttribute('content') || '';
@@ -910,18 +928,28 @@ function extractContent(html) {
   const h2s = [...doc.querySelectorAll('h2')].map(el => el.textContent.trim()).filter(Boolean).slice(0, 15);
   const h3s = [...doc.querySelectorAll('h3')].map(el => el.textContent.trim()).filter(Boolean).slice(0, 15);
 
-  const jsonLd = [...doc.querySelectorAll('script[type="application/ld+json"]')]
-    .map(s => { try { return JSON.parse(s.textContent); } catch { return null; } }).filter(Boolean);
+  // Detect FAQ sections in HTML (accordion patterns, FAQ headings, <details> elements)
+  const faqElements = doc.querySelectorAll(
+    '[class*="faq" i], [id*="faq" i], [class*="accordion" i], [id*="accordion" i], details, [itemtype*="FAQPage"], [itemtype*="Question"]'
+  );
+  const hasFaqHtml = faqElements.length > 0;
+  // Also check if any H2/H3 contains "FAQ" or "Frequently Asked"
+  const hasFaqHeading = [...doc.querySelectorAll('h2, h3, h4')].some(el =>
+    /faq|frequently\s+asked|common\s+questions/i.test(el.textContent)
+  );
+
+  // Remove nav/footer/aside AFTER extracting headings (some sites put useful content in aside)
+  doc.querySelectorAll('nav, footer, aside').forEach(el => el.remove());
 
   const body = doc.querySelector('main') || doc.querySelector('article') || doc.body;
-  const paragraphs = [...(body?.querySelectorAll('p, li') || [])]
+  const paragraphs = [...(body?.querySelectorAll('p, li, dd, blockquote, td, figcaption') || [])]
     .map(el => el.textContent.trim()).filter(t => t.length > 20);
-  const textContent = paragraphs.join(' ').slice(0, 12000);
+  const textContent = paragraphs.join(' ');
 
   const sentences = textContent.replace(/([.!?])\s+/g, '$1|||').split('|||')
     .map(s => s.trim()).filter(s => s.length > 15 && s.length < 500);
 
-  return { title, metaDesc, h1, h2s, h3s, textContent, sentences, paragraphs, jsonLd };
+  return { title, metaDesc, h1, h2s, h3s, textContent, sentences, paragraphs, jsonLd, jsonLdRaw, hasFaqHtml: hasFaqHtml || hasFaqHeading };
 }
 
 // ── Embeddings ──
@@ -937,56 +965,117 @@ function cosineSim(a, b) {
   return dot / (Math.sqrt(nA) * Math.sqrt(nB));
 }
 
-// ── Triple Extraction ──
+// ── Triple Extraction (Full Content) ──
 function extractTriples(sentences) {
-  const triples = [];
+  const allTriples = [];
+
   const patterns = [
-    /^(.{3,60}?)\s+(is|are|was|were|has been|have been)\s+(an?\s+.{3,80})$/i,
-    /^(.{3,60}?)\s+(provides?|offers?|delivers?|enables?|supports?|includes?|features?|contains?)\s+(.{3,80})$/i,
-    /^(.{3,60}?)\s+(helps?\s+\w+|allows?\s+\w+|makes?\s+\w+|gives?\s+\w+)\s+(.{3,80})$/i,
-    /^(.{3,60}?)\s+(can|will|should|must|may)\s+(be\s+.{3,80}|.{3,80})$/i,
-    /^(.{3,60}?)\s+(uses?|utilizes?|leverages?|employs?|implements?)\s+(.{3,80})$/i,
-    /^(.{3,60}?)\s+(improves?|increases?|reduces?|enhances?|optimizes?|boosts?)\s+(.{3,80})$/i,
-    /^(.{3,60}?)\s+(creates?|builds?|generates?|produces?|develops?)\s+(.{3,80})$/i,
-    /^(.{3,60}?)\s+(connects?\s+to|integrates?\s+with|works?\s+with|combines?\s+with)\s+(.{3,80})$/i,
-    /^(.{3,60}?)\s+(costs?|requires?|needs?|demands?|depends?\s+on)\s+(.{3,80})$/i,
-    /^(.{3,60}?)\s+(launched|released|announced|introduced|published|founded)\s+(.{3,80})$/i,
-    /^(.{3,60}?)\s+(ranked|rated|scored|received|earned|won|achieved)\s+(.{3,80})$/i,
-    /^(.{3,60}?)\s+(has|have|had)\s+(.{3,80})$/i,
+    // Being / identity
+    /^(.{3,60}?)\s+(is|are|was|were|has been|have been|remains?)\s+(an?\s+.{3,80})$/i,
+    /^(.{3,60}?)\s+(is|are|was|were)\s+(the\s+.{3,80})$/i,
+    /^(.{3,60}?)\s+(is|are|was|were)\s+((?:known|recognized|considered|regarded)\s+.{3,80})$/i,
+    // Action verbs — provide/offer/deliver
+    /^(.{3,60}?)\s+(provides?|offers?|delivers?|enables?|supports?|includes?|features?|contains?|ensures?|maintains?)\s+(.{3,80})$/i,
+    // Help/allow/make
+    /^(.{3,60}?)\s+(helps?\s+\w+|allows?\s+\w+|makes?\s+\w+|gives?\s+\w+|lets?\s+\w+)\s+(.{3,80})$/i,
+    // Modal verbs
+    /^(.{3,60}?)\s+(can|will|should|must|may|could|would)\s+(be\s+.{3,80}|.{3,80})$/i,
+    // Usage verbs
+    /^(.{3,60}?)\s+(uses?|utilizes?|leverages?|employs?|implements?|adopts?|applies?)\s+(.{3,80})$/i,
+    // Improvement verbs
+    /^(.{3,60}?)\s+(improves?|increases?|reduces?|enhances?|optimizes?|boosts?|lowers?|raises?|accelerates?|streamlines?|simplifies?|strengthens?|maximizes?|minimizes?)\s+(.{3,80})$/i,
+    // Creation verbs
+    /^(.{3,60}?)\s+(creates?|builds?|generates?|produces?|develops?|designs?|establishes?|launches?|introduces?)\s+(.{3,80})$/i,
+    // Connection verbs
+    /^(.{3,60}?)\s+(connects?\s+to|integrates?\s+with|works?\s+with|combines?\s+with|partners?\s+with|collaborates?\s+with)\s+(.{3,80})$/i,
+    // Requirement verbs
+    /^(.{3,60}?)\s+(costs?|requires?|needs?|demands?|depends?\s+on|relies?\s+on)\s+(.{3,80})$/i,
+    // Event verbs
+    /^(.{3,60}?)\s+(launched|released|announced|introduced|published|founded|started|opened|completed|acquired|merged)\s+(.{3,80})$/i,
+    // Achievement verbs
+    /^(.{3,60}?)\s+(ranked|rated|scored|received|earned|won|achieved|gained|reached|surpassed|exceeded)\s+(.{3,80})$/i,
+    // Possession
+    /^(.{3,60}?)\s+(has|have|had|owns?|holds?|possesses?)\s+(.{3,80})$/i,
+    // Communication / declaration
+    /^(.{3,60}?)\s+(says?|said|states?|stated|claims?|reported|announced|confirmed|revealed|explained|described|noted)\s+(?:that\s+)?(.{3,80})$/i,
+    // Transformation / becoming
+    /^(.{3,60}?)\s+(became|becomes?|turned?\s+into|evolved?\s+into|transformed?\s+into|grew?\s+into)\s+(.{3,80})$/i,
+    // Comparison
+    /^(.{3,60}?)\s+(outperforms?|exceeds?|surpasses?|beats?|leads?|trails?|lags?|matches?|rivals?|competes?\s+with)\s+(.{3,80})$/i,
+    // Causation
+    /^(.{3,60}?)\s+(causes?|leads?\s+to|results?\s+in|contributes?\s+to|drives?|prevents?|eliminates?|triggers?)\s+(.{3,80})$/i,
+    // Location / existence
+    /^(.{3,60}?)\s+(is\s+located|is\s+based|is\s+headquartered|operates?\s+in|serves?|exists?\s+in|is\s+available)\s+(.{3,80})$/i,
+    // Passive voice — "[Subject] was [verb]ed by/in/for"
+    /^(.{3,60}?)\s+(was|were|is|are|has been|have been)\s+((?:built|created|designed|developed|founded|established|acquired|launched|released|used|made|known|named|called|recognized)\s+.{3,80})$/i,
+    // "According to" attributions
+    /^(?:According\s+to\s+)(.{3,60}?),?\s+(.{3,60}?)\s+(is|are|was|were|has|have|will|can|should|provides?|offers?|includes?)\s+(.{3,80})$/i,
   ];
 
-  for (const sentence of sentences.slice(0, 80)) {
+  // Scan ALL sentences
+  for (const sentence of sentences) {
     const cleaned = sentence.replace(/\s+/g, ' ').trim();
-    if (cleaned.length < 15 || cleaned.length > 200) continue;
+    if (cleaned.length < 15 || cleaned.length > 300) continue;
+
     for (const pattern of patterns) {
       const match = cleaned.match(pattern);
       if (match) {
-        const subject = match[1].trim();
-        const predicate = match[2].trim();
-        const object = match[3].trim().replace(/[.!?,;:]+$/, '');
+        // Handle "According to" pattern (4 groups)
+        let subject, predicate, object;
+        if (match.length === 5) {
+          subject = match[2].trim();
+          predicate = match[3].trim();
+          object = match[4].trim().replace(/[.!?,;:]+$/, '');
+        } else {
+          subject = match[1].trim();
+          predicate = match[2].trim();
+          object = match[3].trim().replace(/[.!?,;:]+$/, '');
+        }
+
         if (subject.length < 2 || object.length < 2) continue;
-        if (/^(it|this|that|they|these|those|he|she|we|you|i)$/i.test(subject)) continue;
+        if (/^(it|this|that|they|these|those|he|she|we|you|i|there|here)$/i.test(subject)) continue;
+        // Skip if subject is just a determiner + short word
+        if (/^(the|a|an|some|each|every|all)\s+\S{1,3}$/i.test(subject)) continue;
 
+        // Quality assessment
         let quality = 'moderate';
-        const subjectProper = /^[A-Z]/.test(subject);
-        const objectSpecific = /\d/.test(object) || /^[A-Z]/.test(object) || object.length > 10;
-        const ambiguous = /\b(it|this|that|they)\b/i.test(subject + ' ' + object);
-        if (subjectProper && objectSpecific && !ambiguous) quality = 'strong';
-        else if (ambiguous || subject.length < 4) quality = 'weak';
+        const subjectProper = /^[A-Z]/.test(subject) && !/^(The|A|An|Some|Each|Every|All|This|That|These|Those)\s/.test(subject);
+        const objectSpecific = /\d/.test(object) || (/^[A-Z]/.test(object) && object.length > 3) || object.length > 15;
+        const ambiguous = /\b(it|this|that|they|something|anything|things)\b/i.test(subject + ' ' + object);
+        const hasQuantifier = /\d+%|\$[\d,.]+|\d+\s*(million|billion|x|times|percent|years?|months?|days?)/i.test(object);
 
-        triples.push({ subject, predicate, object, quality, source: cleaned.slice(0, 100) });
+        if (subjectProper && objectSpecific && !ambiguous) quality = 'strong';
+        if (hasQuantifier && subjectProper) quality = 'strong';
+        if (ambiguous || subject.length < 4) quality = 'weak';
+
+        allTriples.push({ subject, predicate, object, quality, source: cleaned.slice(0, 120) });
         break;
       }
     }
   }
 
+  // Deduplicate by full triple signature (not just subject)
   const seen = new Set();
-  return triples.filter(t => {
-    const k = t.subject.toLowerCase();
-    if (seen.has(k)) return false;
-    seen.add(k);
+  const deduped = allTriples.filter(t => {
+    const key = `${t.subject.toLowerCase()}|${t.predicate.toLowerCase()}|${t.object.toLowerCase().slice(0, 30)}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
     return true;
-  }).slice(0, 10);
+  });
+
+  // Sort: strong first, then moderate, then weak
+  const qualityOrder = { strong: 0, moderate: 1, weak: 2 };
+  deduped.sort((a, b) => qualityOrder[a.quality] - qualityOrder[b.quality]);
+
+  // Return stats for scoring + top triples for display
+  return {
+    displayed: deduped.slice(0, 20),
+    totalFound: deduped.length,
+    totalSentences: sentences.length,
+    strong: deduped.filter(t => t.quality === 'strong').length,
+    moderate: deduped.filter(t => t.quality === 'moderate').length,
+    weak: deduped.filter(t => t.quality === 'weak').length,
+  };
 }
 
 // ── Entity Clarity ──
@@ -1030,17 +1119,81 @@ function analyzeStructuredData(pd) {
     findings.push({ status: 'fail', text: 'Without Schema.org markup, LLMs must infer entity types from unstructured text' });
     return { score: 10, findings };
   }
-  findings.push({ status: 'pass', text: `Found ${pd.jsonLd.length} JSON-LD block(s) \u2014 structured data feeds LLM knowledge graphs` });
-  const types = pd.jsonLd.map(s => s['@type']).filter(Boolean).flat();
-  if (types.length) findings.push({ status: 'pass', text: `Schema types: ${types.join(', ')}` });
-  const all = JSON.stringify(pd.jsonLd);
-  if (/author/i.test(all)) findings.push({ status: 'pass', text: 'Author attribution present \u2014 helps LLMs cite correctly' });
+
+  findings.push({ status: 'pass', text: `Found ${pd.jsonLdRaw.length} JSON-LD block(s) with ${pd.jsonLd.length} schema object(s) \u2014 structured data feeds LLM knowledge graphs` });
+
+  // Collect all @type values (handle strings and arrays)
+  const types = [];
+  for (const schema of pd.jsonLd) {
+    const t = schema['@type'];
+    if (Array.isArray(t)) types.push(...t);
+    else if (t) types.push(t);
+  }
+  if (types.length) findings.push({ status: 'pass', text: `Schema types detected: ${[...new Set(types)].join(', ')}` });
+
+  const allText = JSON.stringify(pd.jsonLd).toLowerCase();
+
+  // Author
+  if (/\"author\"/.test(allText)) findings.push({ status: 'pass', text: 'Author attribution present \u2014 helps LLMs cite the correct source' });
   else findings.push({ status: 'warn', text: 'No author field \u2014 adding authorship improves citation accuracy' });
-  if (/date(Published|Modified|Created)/i.test(all)) findings.push({ status: 'pass', text: 'Publication date found \u2014 LLMs use this for freshness' });
+
+  // Dates
+  if (/\"datepublished\"|\"datemodified\"|\"datecreated\"/.test(allText)) findings.push({ status: 'pass', text: 'Publication/modification date found \u2014 LLMs use this for content freshness' });
   else findings.push({ status: 'warn', text: 'No publication date \u2014 LLMs may not know how current your content is' });
 
-  let s = 30;
-  findings.forEach(f => { s += f.status === 'pass' ? 12 : f.status === 'warn' ? 5 : 0; });
+  // Description
+  if (/\"description\"/.test(allText)) findings.push({ status: 'pass', text: 'Schema description field present \u2014 provides a machine-readable summary' });
+
+  // FAQ detection in schema
+  const typesLower = types.map(t => t.toLowerCase());
+  const hasFaqSchema = typesLower.some(t => t.includes('faqpage') || t.includes('question'));
+  if (hasFaqSchema) {
+    const questionCount = pd.jsonLd.filter(s => {
+      const st = (s['@type'] || '').toString().toLowerCase();
+      return st.includes('question');
+    }).length;
+    // Also count questions inside mainEntity arrays
+    let nestedQs = 0;
+    for (const schema of pd.jsonLd) {
+      if (schema.mainEntity && Array.isArray(schema.mainEntity)) nestedQs += schema.mainEntity.length;
+    }
+    const totalQs = Math.max(questionCount, nestedQs);
+    findings.push({ status: 'pass', text: `FAQPage schema detected${totalQs > 0 ? ` with ${totalQs} question(s)` : ''} \u2014 excellent for LLM Q&A citation` });
+  } else if (pd.hasFaqHtml) {
+    findings.push({ status: 'warn', text: 'FAQ content found in HTML but no FAQPage schema markup \u2014 add FAQ structured data to help LLMs extract Q&A pairs directly' });
+  }
+
+  // HowTo detection
+  if (typesLower.some(t => t.includes('howto'))) {
+    findings.push({ status: 'pass', text: 'HowTo schema detected \u2014 LLMs can extract step-by-step instructions' });
+  }
+
+  // Organization / Person / WebSite
+  if (typesLower.some(t => t.includes('organization') || t.includes('localbusiness'))) {
+    findings.push({ status: 'pass', text: 'Organization/Business schema present \u2014 establishes entity identity for LLMs' });
+  }
+  if (typesLower.some(t => t.includes('website') || t.includes('webpage'))) {
+    findings.push({ status: 'pass', text: 'WebSite/WebPage schema present \u2014 helps LLMs understand page context' });
+  }
+  if (typesLower.some(t => t.includes('breadcrumb'))) {
+    findings.push({ status: 'pass', text: 'BreadcrumbList schema present \u2014 helps LLMs understand site hierarchy' });
+  }
+
+  // Article / BlogPosting
+  if (typesLower.some(t => t.includes('article') || t.includes('blogposting') || t.includes('newsarticle'))) {
+    findings.push({ status: 'pass', text: 'Article/BlogPosting schema present \u2014 signals content type for LLM indexing' });
+  }
+
+  // Product / Review
+  if (typesLower.some(t => t.includes('product'))) {
+    findings.push({ status: 'pass', text: 'Product schema present \u2014 LLMs can extract product details and specs' });
+  }
+  if (typesLower.some(t => t.includes('review') || t.includes('aggregaterating'))) {
+    findings.push({ status: 'pass', text: 'Review/Rating schema present \u2014 LLMs use this for sentiment and recommendation data' });
+  }
+
+  let s = 20;
+  findings.forEach(f => { s += f.status === 'pass' ? 10 : f.status === 'warn' ? 4 : 0; });
   return { score: Math.min(100, s), findings };
 }
 
@@ -1051,6 +1204,11 @@ function analyzeContentStructure(pd) {
   if (totalH >= 4) findings.push({ status: 'pass', text: `Good heading hierarchy: ${pd.h2s.length} H2s and ${pd.h3s.length} H3s for LLM chunking` });
   else if (totalH >= 2) findings.push({ status: 'warn', text: `Limited heading structure (${totalH} subheadings) \u2014 more headings help LLMs segment content` });
   else findings.push({ status: 'fail', text: 'Very few subheadings \u2014 LLMs struggle to chunk content without section markers' });
+
+  // FAQ section detection
+  if (pd.hasFaqHtml) {
+    findings.push({ status: 'pass', text: 'FAQ section detected in page content \u2014 Q&A pairs are highly citable by LLMs' });
+  }
 
   const lens = pd.sentences.map(s => s.split(/\s+/).length);
   const avg = lens.length ? lens.reduce((a,b)=>a+b,0)/lens.length : 0;
@@ -1073,22 +1231,54 @@ function analyzeContentStructure(pd) {
   else findings.push({ status: 'pass', text: 'Paragraph lengths are reasonable \u2014 well-chunked for LLM processing' });
 
   let s = 0;
-  findings.forEach(f => { s += f.status === 'pass' ? 18 : f.status === 'warn' ? 8 : 0; });
+  findings.forEach(f => { s += f.status === 'pass' ? 16 : f.status === 'warn' ? 7 : 0; });
   return { score: Math.min(100, s), findings };
 }
 
 // ── Recommendations ──
 function generateRecs(rpt) {
   const recs = [];
-  if (rpt.cosineScore < 0.5) recs.push({ priority: 'high', title: 'Align body content with H1 topic', description: 'Your page content diverges from the H1 heading. Ensure paragraphs directly elaborate on the primary topic. LLMs weigh H1\u2013body coherence heavily when assessing page authority.' });
-  if (rpt.triplesScore < 40) recs.push({ priority: 'high', title: 'Add clear subject-predicate-object statements', description: 'Rewrite key sentences as "[Entity] [does/is] [specific thing]" patterns. Avoid starting with pronouns. E.g. instead of "It provides great results," write "Acme\'s platform reduces processing time by 40%."' });
-  if (rpt.structured.score < 40) recs.push({ priority: 'high', title: 'Add JSON-LD structured data', description: 'Implement Schema.org markup (Article, Product, Organization, FAQ) with @type, name, description, author, and datePublished at minimum.' });
+
+  // ── High priority: serious gaps ──
+  if (rpt.cosineScore < 0.4) recs.push({ priority: 'high', title: 'Align body content with H1 topic', description: 'Your page content diverges significantly from the H1 heading. Ensure paragraphs directly elaborate on the primary topic. LLMs weigh H1\u2013body coherence heavily when assessing page authority.' });
+  if (rpt.triplesScore < 30) recs.push({ priority: 'high', title: 'Add clear subject-predicate-object statements', description: 'Rewrite key sentences as "[Entity] [does/is] [specific thing]" patterns. Avoid starting with pronouns. E.g. instead of "It provides great results," write "Acme\'s platform reduces processing time by 40%."' });
+  if (rpt.structured.score < 30) recs.push({ priority: 'high', title: 'Add JSON-LD structured data', description: 'Implement Schema.org markup (Article, Product, Organization, FAQ) with @type, name, description, author, and datePublished at minimum.' });
   if (!rpt.h1Text) recs.push({ priority: 'high', title: 'Add an H1 heading', description: 'The most important signal for LLMs to determine page topic. Add a clear, descriptive H1 naming the primary entity.' });
-  if (rpt.entity.score < 50) recs.push({ priority: 'medium', title: 'Improve entity clarity', description: 'Replace ambiguous pronoun references with explicit entity names. LLMs track entities across sentences \u2014 unclear referents make claims uncitable.' });
-  if (rpt.structure.score < 50) recs.push({ priority: 'medium', title: 'Restructure for scannability', description: 'Add more H2/H3 subheadings for clear topical sections. Each should address a subtopic an LLM might cite independently.' });
+
+  // ── Medium priority: room for improvement ──
+  if (rpt.cosineScore >= 0.4 && rpt.cosineScore < 0.7) recs.push({ priority: 'medium', title: 'Tighten content focus around H1 topic', description: `Cosine similarity is ${(rpt.cosineScore*100).toFixed(0)}% \u2014 good but not great. Remove tangential paragraphs or add more content that directly supports your H1 topic. Aim for 70%+ to maximize LLM topic association.` });
+  if (rpt.triplesScore >= 30 && rpt.triplesScore < 65) recs.push({ priority: 'medium', title: 'Strengthen semantic triple clarity', description: 'Some claims are extractable but many sentences still lack clear Subject\u2013Predicate\u2013Object structure. Rewrite vague or pronoun-heavy sentences into explicit declarative statements with named entities.' });
+  if (rpt.entity.score < 70) recs.push({ priority: 'medium', title: 'Improve entity clarity', description: 'Replace ambiguous pronoun references (it, this, that) with explicit entity names. Reinforce your primary topic by mentioning it consistently throughout the content. LLMs track entities across sentences \u2014 unclear referents make claims uncitable.' });
+  if (rpt.structure.score < 70) recs.push({ priority: 'medium', title: 'Improve content structure', description: 'Add more descriptive H2/H3 subheadings to create clearly delineated topical sections. Each section should address a specific subtopic that an LLM might want to cite independently.' });
+
   const facts = (rpt.textContent.match(/\d+%|\$[\d,.]+|\d{4}|\d+\s*(million|billion|thousand|percent)/gi) || []);
-  if (facts.length < 5) recs.push({ priority: 'medium', title: 'Increase factual density', description: 'Add specific numbers, dates, percentages. LLMs are far more likely to cite concrete, verifiable data points.' });
-  if (rpt.cosineScore >= 0.7 && rpt.triplesScore >= 60) recs.push({ priority: 'low', title: 'Add a FAQ section', description: 'Your content is already well-structured. FAQ question-answer pairs directly match how LLMs formulate cited responses.' });
+  if (facts.length < 8) recs.push({ priority: 'medium', title: 'Increase factual density', description: `Found ${facts.length} data points. Adding more specific numbers, dates, percentages, and statistics makes claims more verifiable and citable. LLMs strongly prefer concrete data over general statements.` });
+
+  // FAQ-specific recommendations
+  if (!rpt.hasFaqHtml && !rpt.hasFaqSchema) {
+    recs.push({ priority: 'medium', title: 'Add a FAQ section with schema markup', description: 'Q&A pairs directly match how LLMs formulate cited responses. Add a FAQ section with FAQPage structured data \u2014 each question-answer pair becomes a ready-made citable unit.' });
+  } else if (rpt.hasFaqHtml && !rpt.hasFaqSchema) {
+    recs.push({ priority: 'medium', title: 'Add FAQPage schema to your existing FAQ', description: 'Your page has FAQ content but no FAQPage structured data. Adding Schema.org FAQPage markup lets LLMs extract your Q&A pairs directly without parsing the HTML.' });
+  }
+
+  if (rpt.structured.score >= 30 && rpt.structured.score < 70) recs.push({ priority: 'medium', title: 'Expand structured data coverage', description: 'You have some schema markup but could add more. Consider adding author, datePublished, dateModified, Organization, and BreadcrumbList schemas to give LLMs a richer entity graph to work with.' });
+
+  // ── Low priority: optimization for already-good pages ──
+  if (rpt.cosineScore >= 0.7) recs.push({ priority: 'low', title: 'Add topic-adjacent long-tail content', description: 'Your core topic alignment is strong. Consider adding related subtopics and long-tail variations to capture a wider range of LLM queries that might cite your page.' });
+  if (rpt.triplesScore >= 65) recs.push({ priority: 'low', title: 'Add quotable summary sentences', description: 'Your content already has good claim density. Add 2\u20133 concise "quotable" summary sentences near the top of the page that encapsulate the key takeaway \u2014 LLMs often pull from introductions and conclusions.' });
+  if (rpt.structured.score >= 70) recs.push({ priority: 'low', title: 'Add SameAs and related entity links', description: 'Your structured data is solid. Adding sameAs links to Wikipedia, Wikidata, and social profiles strengthens your entity\'s knowledge graph connections, making LLMs more confident when citing you.' });
+  if (rpt.entity.score >= 70 && rpt.structure.score >= 70) recs.push({ priority: 'low', title: 'Cross-link related content', description: 'Your page is well-structured. Internal linking to related pages on your site helps LLMs build a richer understanding of your domain authority on this topic.' });
+
+  // Ensure at least 2 recommendations
+  if (recs.length === 0) {
+    recs.push({ priority: 'low', title: 'Maintain and refresh content regularly', description: 'Your page is well-optimized for LLM citation. Keep content up to date \u2014 LLMs favor pages with recent modification dates and current information. Periodically review and update statistics, dates, and claims.' });
+    recs.push({ priority: 'low', title: 'Monitor your LLM citation footprint', description: 'Test how LLMs reference your page by asking ChatGPT, Claude, and Perplexity questions your content should answer. Use the results to identify gaps in how your content is being cited and adjust accordingly.' });
+  }
+
+  // Sort: high first, then medium, then low
+  const priorityOrder = { high: 0, medium: 1, low: 2 };
+  recs.sort((a, b) => priorityOrder[a.priority] - priorityOrder[b.priority]);
+
   return recs.slice(0, 6);
 }
 
@@ -1142,10 +1332,16 @@ async function runAnalysis(html, url) {
   setStep('embed', 'active');
   const h1Text = pd.h1 || pd.title || '';
   const h1Emb = await getEmbedding(h1Text);
-  const chunks = [];
-  for (let i = 0; i < pd.textContent.length; i += 500) chunks.push(pd.textContent.slice(i, i+500));
+  // Sample up to 15 evenly-spaced chunks across the full content
+  const chunkSize = 500;
+  const totalChunks = Math.ceil(pd.textContent.length / chunkSize);
+  const maxSamples = Math.min(15, totalChunks);
+  const step = Math.max(1, Math.floor(totalChunks / maxSamples));
   const chunkEmbs = [];
-  for (const c of chunks.slice(0, 10)) chunkEmbs.push(await getEmbedding(c));
+  for (let ci = 0; ci < totalChunks && chunkEmbs.length < maxSamples; ci += step) {
+    const chunk = pd.textContent.slice(ci * chunkSize, (ci + 1) * chunkSize);
+    if (chunk.length > 30) chunkEmbs.push(await getEmbedding(chunk));
+  }
   const dim = h1Emb.length;
   const avgEmb = new Array(dim).fill(0);
   for (const e of chunkEmbs) for (let i=0;i<dim;i++) avgEmb[i] += e[i];
@@ -1155,10 +1351,18 @@ async function runAnalysis(html, url) {
 
   setStep('triples', 'active');
   await new Promise(r => setTimeout(r, 100));
-  const triples = extractTriples(pd.sentences);
-  const strongN = triples.filter(t => t.quality==='strong').length;
-  const modN = triples.filter(t => t.quality==='moderate').length;
-  const triplesScore = Math.min(100, Math.round((strongN*12)+(modN*7)+(triples.length*3)+(triples.length>=5?15:0)));
+  const tripleResults = extractTriples(pd.sentences);
+  const { displayed: triples, totalFound, totalSentences, strong: strongN, moderate: modN, weak: weakN } = tripleResults;
+  const coverageRatio = totalSentences > 0 ? totalFound / totalSentences : 0;
+
+  // Score based on: quality distribution, volume, and coverage
+  let triplesScore = 0;
+  triplesScore += Math.min(35, strongN * 5);       // Up to 35 pts from strong triples
+  triplesScore += Math.min(25, modN * 3);           // Up to 25 pts from moderate
+  triplesScore += Math.min(15, Math.round(coverageRatio * 100)); // Up to 15 pts from coverage ratio
+  triplesScore += totalFound >= 10 ? 15 : totalFound >= 5 ? 10 : totalFound >= 3 ? 5 : 0; // Volume bonus
+  triplesScore += weakN === 0 && totalFound > 3 ? 10 : 0; // No-weak bonus
+  triplesScore = Math.min(100, triplesScore);
   setStep('triples', 'done'); setProgress(85);
 
   setStep('score', 'active');
@@ -1172,15 +1376,19 @@ async function runAnalysis(html, url) {
   else cosineExplain = 'Weak alignment. Body content diverges substantially from the H1. LLMs may struggle to determine what this page is authoritatively about.';
 
   let tripleAnalysis;
-  if (triplesScore >= 60) tripleAnalysis = `Extracted ${triples.length} semantic triples with ${strongN} strong assertions. Good claim density \u2014 LLMs can parse and cite specific facts from this page.`;
-  else if (triplesScore >= 30) tripleAnalysis = `Found ${triples.length} extractable triples, but only ${strongN} are unambiguous. Rewriting key claims in clear Subject\u2013Predicate\u2013Object form would improve citability.`;
-  else tripleAnalysis = `Only ${triples.length} triples extracted, most with weak structure. The content lacks clear declarative statements. Restructure sentences around explicit entities and concrete predicates.`;
+  if (triplesScore >= 60) tripleAnalysis = `Scanned ${totalSentences} sentences and extracted ${totalFound} semantic triples (${strongN} strong, ${modN} moderate, ${weakN} weak). Coverage: ${(coverageRatio*100).toFixed(1)}% of sentences contain extractable claims \u2014 good density for LLM citation.`;
+  else if (triplesScore >= 30) tripleAnalysis = `Scanned ${totalSentences} sentences but only extracted ${totalFound} triples (${strongN} strong). Coverage: ${(coverageRatio*100).toFixed(1)}%. Many sentences lack clear Subject\u2013Predicate\u2013Object structure. Rewriting key claims as declarative statements would improve citability.`;
+  else tripleAnalysis = `Scanned ${totalSentences} sentences but could only extract ${totalFound} triples, mostly weak. Coverage: ${(coverageRatio*100).toFixed(1)}%. The content lacks clear, declarative statements that LLMs can parse as citable facts. Restructure sentences around explicit entities with concrete predicates.`;
 
   const overall = Math.round(
     (cosineScore*100*0.25) + (triplesScore*0.25) + (entity.score*0.2) + (structured.score*0.15) + (structure.score*0.15)
   );
 
-  const recs = generateRecs({ cosineScore, triplesScore, structured, entity, structure, h1Text, textContent: pd.textContent });
+  // Check for FAQ schema
+  const typesLower = pd.jsonLd.map(s => (s['@type'] || '').toString().toLowerCase());
+  const hasFaqSchema = typesLower.some(t => t.includes('faqpage') || t.includes('question'));
+
+  const recs = generateRecs({ cosineScore, triplesScore, structured, entity, structure, h1Text, textContent: pd.textContent, hasFaqHtml: pd.hasFaqHtml, hasFaqSchema });
   const bodyKw = getKeywords(pd.textContent);
   const h1Kw = new Set(getKeywords(h1Text, 20));
 
@@ -1188,7 +1396,7 @@ async function runAnalysis(html, url) {
   await new Promise(r => setTimeout(r, 400));
   document.getElementById('loading').classList.remove('active');
 
-  renderReport({ overall, h1Text, cosineScore, cosineExplain, triples, triplesScore, tripleAnalysis, entity, structured, structure, recs, bodyKw, h1Kw }, url);
+  renderReport({ overall, h1Text, cosineScore, cosineExplain, triples, triplesScore, tripleAnalysis, totalFound, totalSentences, strongN, modN, weakN, coverageRatio, entity, structured, structure, recs, bodyKw, h1Kw }, url);
 }
 
 // ── Analyze via URL fetch ──
@@ -1295,11 +1503,18 @@ function renderReport(d, url) {
       </div>
       <div class="section-body">
         <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px;line-height:1.6">${d.tripleAnalysis}</p>
-        <div class="score-bar-container">
-          <div class="score-bar-label"><span>Triple extraction quality</span><span>${d.triplesScore}%</span></div>
-          <div class="score-bar"><div class="score-bar-fill" style="width:${d.triplesScore}%;background:${scoreHex(d.triplesScore)}"></div></div>
+        <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:18px;">
+          <div class="score-bar-container" style="flex:1;min-width:200px;margin-bottom:0">
+            <div class="score-bar-label"><span>Coverage (triples / sentences)</span><span>${d.totalFound} / ${d.totalSentences} (${(d.coverageRatio*100).toFixed(1)}%)</span></div>
+            <div class="score-bar"><div class="score-bar-fill" style="width:${Math.min(100, d.coverageRatio*100)}%;background:${scoreHex(d.coverageRatio*100)}"></div></div>
+          </div>
+          <div style="display:flex;gap:12px;align-items:center;font-family:var(--mono);font-size:12px;">
+            <span style="color:var(--green)">\u25CF ${d.strongN} strong</span>
+            <span style="color:var(--orange)">\u25CF ${d.modN} moderate</span>
+            <span style="color:var(--red)">\u25CF ${d.weakN} weak</span>
+          </div>
         </div>
-        ${d.triples.length ? `<table class="triples-table"><thead><tr><th>Subject</th><th>Predicate</th><th>Object</th><th>Quality</th></tr></thead><tbody>${d.triples.map(t => `<tr><td class="subject">${escHtml(t.subject)}</td><td class="predicate">${escHtml(t.predicate)}</td><td class="object">${escHtml(t.object)}</td><td><span class="triple-quality quality-${t.quality}">${t.quality}</span></td></tr>`).join('')}</tbody></table>` : '<p style="color:var(--text-dim);font-size:13px;">No clear semantic triples could be extracted.</p>'}
+        ${d.triples.length ? `<table class="triples-table"><thead><tr><th>Subject</th><th>Predicate</th><th>Object</th><th>Quality</th></tr></thead><tbody>${d.triples.map(t => `<tr><td class="subject">${escHtml(t.subject)}</td><td class="predicate">${escHtml(t.predicate)}</td><td class="object">${escHtml(t.object)}</td><td><span class="triple-quality quality-${t.quality}">${t.quality}</span></td></tr>`).join('')}</tbody></table>${d.totalFound > d.triples.length ? `<p style="font-family:var(--mono);font-size:11px;color:var(--text-dim);margin-top:12px;">Showing top ${d.triples.length} of ${d.totalFound} triples found (sorted by quality)</p>` : ''}` : '<p style="color:var(--text-dim);font-size:13px;">No clear semantic triples could be extracted from this content.</p>'}
       </div>
     </div>
 
@@ -1381,6 +1596,13 @@ function exportToExcel() {
   const triplesHeader = [
     ['SEMANTIC TRIPLES ANALYSIS'],
     ['Score', `${d.triplesScore}/100`],
+    ['Total Sentences Scanned', d.totalSentences],
+    ['Total Triples Found', d.totalFound],
+    ['Coverage Ratio', `${(d.coverageRatio*100).toFixed(1)}%`],
+    ['Strong', d.strongN],
+    ['Moderate', d.modN],
+    ['Weak', d.weakN],
+    [],
     ['Analysis', d.tripleAnalysis],
     [],
     ['Subject', 'Predicate', 'Object', 'Quality'],
