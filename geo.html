@@ -1,0 +1,1480 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VectorVision — LLM Citation Optimizer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bungee+Shade&family=DM+Mono:wght@400;500&family=Instrument+Serif:ital@0;1&family=Satoshi:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #0a0a0c;
+  --surface: #111114;
+  --surface-2: #18181c;
+  --surface-3: #222228;
+  --border: #2a2a32;
+  --border-light: #3a3a44;
+  --text: #e8e8ed;
+  --text-muted: #8888a0;
+  --text-dim: #55556a;
+  --accent: #c8ff00;
+  --accent-dim: #c8ff0022;
+  --accent-mid: #c8ff0066;
+  --red: #ff4d6a;
+  --red-dim: #ff4d6a22;
+  --orange: #ff9f43;
+  --orange-dim: #ff9f4322;
+  --green: #2ed573;
+  --green-dim: #2ed57322;
+  --blue: #5b9aff;
+  --blue-dim: #5b9aff22;
+  --radius: 12px;
+  --radius-sm: 8px;
+  --mono: 'DM Mono', monospace;
+  --serif: 'Instrument Serif', serif;
+  --sans: 'Satoshi', sans-serif;
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: var(--sans);
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 9999;
+}
+
+.container { max-width: 960px; margin: 0 auto; padding: 0 24px; }
+
+/* Header */
+header {
+  padding: 48px 0 32px;
+  border-bottom: 1px solid var(--border);
+}
+
+.logo-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 14px;
+  margin-bottom: 12px;
+}
+
+.logo {
+  font-family: 'Bungee Shade', cursive;
+  font-size: 44px;
+  letter-spacing: 2px;
+  line-height: 1.1;
+  background: linear-gradient(
+    180deg,
+    #fff 0%,
+    #c8ff00 20%,
+    #00e5ff 50%,
+    #ff00e5 80%,
+    #fff 100%
+  );
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  filter: drop-shadow(0 0 12px rgba(200, 255, 0, 0.3)) drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5));
+  text-transform: uppercase;
+}
+
+.logo-tag {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 2px;
+}
+
+header p {
+  font-size: 15px;
+  color: var(--text-muted);
+  max-width: 640px;
+  line-height: 1.6;
+  margin-top: 8px;
+}
+
+.badge-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+.badge .dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--green);
+}
+
+/* Input */
+.input-section {
+  padding: 32px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.url-row {
+  display: flex;
+  gap: 12px;
+}
+
+.url-row .field { flex: 1; }
+
+.field label {
+  display: block;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  margin-bottom: 8px;
+}
+
+.field input {
+  width: 100%;
+  padding: 14px 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.field input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-dim);
+}
+
+.field input::placeholder { color: var(--text-dim); }
+
+.btn-analyze {
+  align-self: flex-end;
+  padding: 14px 32px;
+  background: var(--accent);
+  color: var(--bg);
+  border: none;
+  border-radius: var(--radius-sm);
+  font-family: var(--sans);
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+  letter-spacing: 0.5px;
+  margin-top: 23px;
+}
+
+.btn-analyze:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 20px var(--accent-mid);
+}
+
+.btn-analyze:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* Loading */
+.loading-overlay {
+  display: none;
+  padding: 48px 0;
+}
+
+.loading-overlay.active { display: block; }
+
+.progress-wrapper {
+  max-width: 480px;
+  margin: 0 auto;
+}
+
+.progress-bar-bg {
+  height: 4px;
+  background: var(--surface-3);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-bottom: 20px;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 2px;
+  transition: width 0.6s ease;
+  width: 0%;
+}
+
+.loading-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.load-step {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--text-dim);
+  transition: color 0.3s;
+}
+
+.load-step.active { color: var(--text-muted); }
+.load-step.done { color: var(--green); }
+
+.load-step .step-icon {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  border: 1px solid var(--border);
+  flex-shrink: 0;
+  transition: all 0.3s;
+}
+
+.load-step.active .step-icon {
+  border-color: var(--accent);
+  color: var(--accent);
+  animation: pulse 1.2s ease infinite;
+}
+
+.load-step.done .step-icon {
+  border-color: var(--green);
+  background: var(--green-dim);
+  color: var(--green);
+}
+
+@keyframes pulse {
+  0%, 100% { box-shadow: 0 0 0 0 var(--accent-dim); }
+  50% { box-shadow: 0 0 0 6px transparent; }
+}
+
+/* Error */
+.error-msg {
+  display: none;
+  padding: 16px 20px;
+  background: var(--red-dim);
+  border: 1px solid #ff4d6a44;
+  border-radius: var(--radius-sm);
+  color: var(--red);
+  font-size: 14px;
+  margin-top: 16px;
+}
+
+.error-msg.active { display: block; }
+
+/* Report */
+#report { display: none; padding: 32px 0 64px; }
+#report.active { display: block; }
+
+.report-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 32px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid var(--border);
+}
+
+.report-header h2 {
+  font-family: var(--serif);
+  font-size: 28px;
+  font-style: italic;
+  font-weight: 400;
+}
+
+.report-header .url-display {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--text-dim);
+  margin-top: 4px;
+  word-break: break-all;
+}
+
+.overall-score {
+  text-align: center;
+  padding: 16px 28px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  min-width: 140px;
+}
+
+.overall-score .label {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  margin-bottom: 6px;
+}
+
+.overall-score .value {
+  font-family: var(--sans);
+  font-size: 40px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.score-high { color: var(--green); }
+.score-mid { color: var(--orange); }
+.score-low { color: var(--red); }
+
+/* Sections */
+.report-section {
+  margin-bottom: 28px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  animation: fadeInUp 0.5s ease both;
+}
+
+.report-section:nth-child(2) { animation-delay: 0.05s; }
+.report-section:nth-child(3) { animation-delay: 0.1s; }
+.report-section:nth-child(4) { animation-delay: 0.15s; }
+.report-section:nth-child(5) { animation-delay: 0.2s; }
+.report-section:nth-child(6) { animation-delay: 0.25s; }
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--border);
+}
+
+.section-header h3 {
+  font-size: 16px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.section-header h3 .icon {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+.section-score {
+  font-family: var(--mono);
+  font-size: 22px;
+  font-weight: 500;
+}
+
+.section-body { padding: 24px; }
+
+/* Score bar */
+.score-bar-container { margin-bottom: 20px; }
+
+.score-bar-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  font-family: var(--mono);
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+
+.score-bar {
+  height: 6px;
+  background: var(--surface-3);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.score-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 1s ease;
+}
+
+/* Triples table */
+.triples-table { width: 100%; border-collapse: collapse; }
+
+.triples-table th {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  text-align: left;
+  padding: 8px 12px 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.triples-table td {
+  padding: 10px 12px;
+  font-size: 14px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-muted);
+  vertical-align: top;
+}
+
+.triples-table tr:last-child td { border-bottom: none; }
+.triples-table .subject { color: var(--accent); font-weight: 500; }
+.triples-table .predicate { color: var(--blue); }
+.triples-table .object { color: var(--text); }
+
+.triple-quality {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.quality-strong { background: var(--green-dim); color: var(--green); }
+.quality-moderate { background: var(--orange-dim); color: var(--orange); }
+.quality-weak { background: var(--red-dim); color: var(--red); }
+
+/* Findings */
+.findings-list { list-style: none; }
+
+.findings-list li {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text-muted);
+  display: flex;
+  gap: 12px;
+}
+
+.findings-list li:last-child { border-bottom: none; }
+
+.finding-icon {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-size: 11px;
+  margin-top: 1px;
+}
+
+.finding-pass { background: var(--green-dim); color: var(--green); }
+.finding-warn { background: var(--orange-dim); color: var(--orange); }
+.finding-fail { background: var(--red-dim); color: var(--red); }
+
+/* Recs */
+.recs-grid { display: grid; gap: 12px; }
+
+.rec-card {
+  padding: 16px 20px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  display: flex;
+  gap: 14px;
+}
+
+.rec-priority {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.priority-high { background: var(--red-dim); color: var(--red); }
+.priority-medium { background: var(--orange-dim); color: var(--orange); }
+.priority-low { background: var(--green-dim); color: var(--green); }
+
+.rec-content h4 { font-size: 14px; font-weight: 700; margin-bottom: 4px; }
+.rec-content p { font-size: 13px; color: var(--text-muted); line-height: 1.5; }
+
+/* Cosine viz */
+.cosine-viz {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+  padding: 20px 0;
+}
+
+.cosine-circle {
+  position: relative;
+  width: 120px;
+  height: 120px;
+  flex-shrink: 0;
+}
+
+.cosine-circle svg {
+  width: 120px;
+  height: 120px;
+  transform: rotate(-90deg);
+}
+
+.cosine-circle .track {
+  fill: none;
+  stroke: var(--surface-3);
+  stroke-width: 8;
+}
+
+.cosine-circle .fill-ring {
+  fill: none;
+  stroke-width: 8;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 1.5s ease;
+}
+
+.cosine-circle .center-text {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--mono);
+  font-size: 24px;
+  font-weight: 500;
+}
+
+.cosine-detail h4 { font-size: 14px; font-weight: 700; margin-bottom: 6px; }
+
+.cosine-detail .h1-display {
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--accent);
+  background: var(--accent-dim);
+  padding: 8px 12px;
+  border-radius: 6px;
+  margin-bottom: 12px;
+  word-break: break-word;
+}
+
+.cosine-detail p { font-size: 13px; color: var(--text-muted); line-height: 1.6; }
+
+/* Top keywords */
+.keywords-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.kw-chip {
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-family: var(--mono);
+  font-size: 11px;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+}
+
+.kw-chip.in-h1 {
+  border-color: var(--accent-mid);
+  color: var(--accent);
+  background: var(--accent-dim);
+}
+
+/* Input tabs */
+.input-tabs {
+  display: flex;
+  gap: 0;
+  margin-bottom: 20px;
+}
+
+.input-tab {
+  padding: 10px 20px;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  font-family: var(--mono);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  letter-spacing: 0.5px;
+}
+
+.input-tab:first-child { border-radius: var(--radius-sm) 0 0 var(--radius-sm); }
+.input-tab:last-child { border-radius: 0 var(--radius-sm) var(--radius-sm) 0; border-left: none; }
+
+.input-tab.active {
+  background: var(--accent-dim);
+  border-color: var(--accent-mid);
+  color: var(--accent);
+}
+
+.input-tab:hover:not(.active) { background: var(--surface-2); color: var(--text-muted); }
+
+.input-pane { display: none; }
+.input-pane.active { display: block; }
+
+.paste-area {
+  width: 100%;
+  min-height: 180px;
+  max-height: 400px;
+  padding: 14px 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 13px;
+  line-height: 1.5;
+  outline: none;
+  resize: vertical;
+  transition: border-color 0.2s;
+}
+
+.paste-area:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-dim); }
+.paste-area::placeholder { color: var(--text-dim); }
+
+.paste-hint {
+  margin-top: 10px;
+  font-size: 12px;
+  color: var(--text-dim);
+  line-height: 1.8;
+}
+
+.paste-hint code {
+  background: var(--surface-2);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.paste-url-row { margin-top: 12px; }
+
+.paste-url-row input {
+  width: 100%;
+  padding: 10px 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 13px;
+  outline: none;
+}
+
+.paste-url-row input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-dim); }
+.paste-url-row input::placeholder { color: var(--text-dim); }
+
+.paste-url-row label {
+  display: block;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  margin-bottom: 6px;
+}
+
+.btn-row { display: flex; justify-content: flex-end; margin-top: 16px; }
+
+.btn-export {
+  padding: 10px 20px;
+  background: transparent;
+  border: 1px solid var(--accent-mid);
+  border-radius: var(--radius-sm);
+  color: var(--accent);
+  font-family: var(--mono);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  letter-spacing: 0.5px;
+}
+
+.btn-export:hover {
+  background: var(--accent-dim);
+  border-color: var(--accent);
+  transform: translateY(-1px);
+}
+
+.btn-export svg {
+  width: 14px;
+  height: 14px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Info */
+.info-banner {
+  margin-top: 12px;
+  padding: 14px 20px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  color: var(--text-dim);
+  line-height: 1.6;
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+  .url-row { flex-direction: column; }
+  .btn-analyze { width: 100%; margin-top: 12px; }
+  .report-header { flex-direction: column; gap: 16px; }
+  .cosine-viz { flex-direction: column; align-items: flex-start; }
+  .logo { font-size: 28px; letter-spacing: 1px; }
+  .triples-table { font-size: 12px; }
+  .triples-table th, .triples-table td { padding: 8px 6px; }
+}
+</style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <div class="logo-row">
+      <div class="logo">VectorVision</div>
+      <div class="logo-tag">LLM Citation Optimizer</div>
+    </div>
+    <p>Analyze any web page for LLM citability. Measures semantic triple structure, content-to-heading coherence via real cosine similarity, and entity clarity &mdash; the signals that determine whether AI models can extract, attribute, and cite your content.</p>
+    <div class="badge-row">
+      <span class="badge"><span class="dot"></span> 100% Client-Side</span>
+      <span class="badge"><span class="dot"></span> No API Key Needed</span>
+      <span class="badge"><span class="dot"></span> Hugging Face Transformers.js</span>
+    </div>
+  </header>
+
+  <section class="input-section">
+    <div class="input-tabs">
+      <button class="input-tab active" onclick="window._switchTab('url')">Fetch URL</button>
+      <button class="input-tab" onclick="window._switchTab('paste')">Paste HTML</button>
+    </div>
+
+    <div class="input-pane active" id="pane-url">
+      <div class="url-row">
+        <div class="field">
+          <label>URL to Analyze</label>
+          <input type="url" id="urlInput" placeholder="https://example.com/page" />
+        </div>
+        <button class="btn-analyze" id="analyzeBtn" onclick="window._analyze()">Analyze Page</button>
+      </div>
+    </div>
+
+    <div class="input-pane" id="pane-paste">
+      <div class="field">
+        <label>Page HTML Source</label>
+        <textarea class="paste-area" id="htmlPaste" placeholder="Paste your page's HTML source here..."></textarea>
+      </div>
+      <div class="paste-hint">
+        <strong style="color:var(--text-muted);">How to get your page source:</strong><br>
+        &bull; Open your page in a browser &rarr; right-click &rarr; <code>View Page Source</code><br>
+        &bull; Or press <code>Ctrl+U</code> (Windows/Linux) / <code>Cmd+Option+U</code> (Mac)<br>
+        &bull; Select all (<code>Ctrl+A</code>) &rarr; Copy &rarr; Paste here
+      </div>
+      <div class="paste-url-row">
+        <label>Page URL (optional &mdash; for the report header)</label>
+        <input type="url" id="pasteUrlInput" placeholder="https://example.com/page" />
+      </div>
+      <div class="btn-row">
+        <button class="btn-analyze" id="analyzePasteBtn" onclick="window._analyzePaste()">Analyze HTML</button>
+      </div>
+    </div>
+
+    <div class="error-msg" id="errorMsg"></div>
+    <div class="info-banner">
+      Everything runs in your browser. When using Fetch URL, content is retrieved via CORS proxies. When using Paste HTML, nothing leaves your machine at all. Analysis uses a Hugging Face transformer model (all-MiniLM-L6-v2) loaded locally for embeddings and NLP heuristics for semantic triples.
+    </div>
+  </section>
+
+  <div class="loading-overlay" id="loading">
+    <div class="progress-wrapper">
+      <div class="progress-bar-bg">
+        <div class="progress-bar-fill" id="progressBar"></div>
+      </div>
+      <div class="loading-steps" id="loadingSteps">
+        <div class="load-step" data-step="fetch"><span class="step-icon">1</span> Fetching page content</div>
+        <div class="load-step" data-step="parse"><span class="step-icon">2</span> Parsing HTML structure</div>
+        <div class="load-step" data-step="model"><span class="step-icon">3</span> Loading ML model (first run ~30s)</div>
+        <div class="load-step" data-step="embed"><span class="step-icon">4</span> Computing embeddings &amp; cosine similarity</div>
+        <div class="load-step" data-step="triples"><span class="step-icon">5</span> Extracting semantic triples</div>
+        <div class="load-step" data-step="score"><span class="step-icon">6</span> Scoring &amp; generating report</div>
+      </div>
+    </div>
+  </div>
+
+  <section id="report"></section>
+</div>
+
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+<script type="module">
+import { pipeline } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.5.1/dist/transformers.min.js';
+
+let extractor = null;
+
+function showError(msg) {
+  const el = document.getElementById('errorMsg');
+  el.textContent = msg;
+  el.classList.add('active');
+  setTimeout(() => el.classList.remove('active'), 10000);
+}
+
+function setStep(name, state) {
+  const el = document.querySelector(`.load-step[data-step="${name}"]`);
+  if (!el) return;
+  el.classList.remove('active', 'done');
+  if (state) el.classList.add(state);
+  if (state === 'done') el.querySelector('.step-icon').textContent = '\u2713';
+}
+
+function setProgress(pct) {
+  document.getElementById('progressBar').style.width = pct + '%';
+}
+
+function escHtml(str) {
+  const d = document.createElement('div');
+  d.textContent = str;
+  return d.innerHTML;
+}
+
+// ── Fetch ──
+const CORS_PROXIES = [
+  url => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+  url => `https://corsproxy.io/?${encodeURIComponent(url)}`,
+  url => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
+  url => `https://cors-proxy.htmldriven.com/?url=${encodeURIComponent(url)}`,
+];
+
+async function fetchPage(url) {
+  for (const proxy of CORS_PROXIES) {
+    try {
+      const r = await fetch(proxy(url), { signal: AbortSignal.timeout(12000) });
+      if (r.ok) {
+        const text = await r.text();
+        if (text && text.length > 100) return text;
+      }
+    } catch { continue; }
+  }
+  throw new Error('Could not fetch the page via any proxy. Switch to the "Paste HTML" tab instead — right-click your page → View Page Source → copy and paste it here.');
+}
+
+// ── Parse ──
+function extractContent(html) {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(html, 'text/html');
+  doc.querySelectorAll('script, style, nav, footer, iframe, noscript, svg, aside').forEach(el => el.remove());
+
+  const title = doc.querySelector('title')?.textContent?.trim() || '';
+  const metaDesc = doc.querySelector('meta[name="description"]')?.getAttribute('content') || '';
+  const h1 = doc.querySelector('h1')?.textContent?.trim() || '';
+  const h2s = [...doc.querySelectorAll('h2')].map(el => el.textContent.trim()).filter(Boolean).slice(0, 15);
+  const h3s = [...doc.querySelectorAll('h3')].map(el => el.textContent.trim()).filter(Boolean).slice(0, 15);
+
+  const jsonLd = [...doc.querySelectorAll('script[type="application/ld+json"]')]
+    .map(s => { try { return JSON.parse(s.textContent); } catch { return null; } }).filter(Boolean);
+
+  const body = doc.querySelector('main') || doc.querySelector('article') || doc.body;
+  const paragraphs = [...(body?.querySelectorAll('p, li') || [])]
+    .map(el => el.textContent.trim()).filter(t => t.length > 20);
+  const textContent = paragraphs.join(' ').slice(0, 12000);
+
+  const sentences = textContent.replace(/([.!?])\s+/g, '$1|||').split('|||')
+    .map(s => s.trim()).filter(s => s.length > 15 && s.length < 500);
+
+  return { title, metaDesc, h1, h2s, h3s, textContent, sentences, paragraphs, jsonLd };
+}
+
+// ── Embeddings ──
+async function getEmbedding(text) {
+  if (!extractor) extractor = await pipeline('feature-extraction', 'Xenova/all-MiniLM-L6-v2');
+  const out = await extractor(text, { pooling: 'mean', normalize: true });
+  return Array.from(out.data);
+}
+
+function cosineSim(a, b) {
+  let dot = 0, nA = 0, nB = 0;
+  for (let i = 0; i < a.length; i++) { dot += a[i]*b[i]; nA += a[i]*a[i]; nB += b[i]*b[i]; }
+  return dot / (Math.sqrt(nA) * Math.sqrt(nB));
+}
+
+// ── Triple Extraction ──
+function extractTriples(sentences) {
+  const triples = [];
+  const patterns = [
+    /^(.{3,60}?)\s+(is|are|was|were|has been|have been)\s+(an?\s+.{3,80})$/i,
+    /^(.{3,60}?)\s+(provides?|offers?|delivers?|enables?|supports?|includes?|features?|contains?)\s+(.{3,80})$/i,
+    /^(.{3,60}?)\s+(helps?\s+\w+|allows?\s+\w+|makes?\s+\w+|gives?\s+\w+)\s+(.{3,80})$/i,
+    /^(.{3,60}?)\s+(can|will|should|must|may)\s+(be\s+.{3,80}|.{3,80})$/i,
+    /^(.{3,60}?)\s+(uses?|utilizes?|leverages?|employs?|implements?)\s+(.{3,80})$/i,
+    /^(.{3,60}?)\s+(improves?|increases?|reduces?|enhances?|optimizes?|boosts?)\s+(.{3,80})$/i,
+    /^(.{3,60}?)\s+(creates?|builds?|generates?|produces?|develops?)\s+(.{3,80})$/i,
+    /^(.{3,60}?)\s+(connects?\s+to|integrates?\s+with|works?\s+with|combines?\s+with)\s+(.{3,80})$/i,
+    /^(.{3,60}?)\s+(costs?|requires?|needs?|demands?|depends?\s+on)\s+(.{3,80})$/i,
+    /^(.{3,60}?)\s+(launched|released|announced|introduced|published|founded)\s+(.{3,80})$/i,
+    /^(.{3,60}?)\s+(ranked|rated|scored|received|earned|won|achieved)\s+(.{3,80})$/i,
+    /^(.{3,60}?)\s+(has|have|had)\s+(.{3,80})$/i,
+  ];
+
+  for (const sentence of sentences.slice(0, 80)) {
+    const cleaned = sentence.replace(/\s+/g, ' ').trim();
+    if (cleaned.length < 15 || cleaned.length > 200) continue;
+    for (const pattern of patterns) {
+      const match = cleaned.match(pattern);
+      if (match) {
+        const subject = match[1].trim();
+        const predicate = match[2].trim();
+        const object = match[3].trim().replace(/[.!?,;:]+$/, '');
+        if (subject.length < 2 || object.length < 2) continue;
+        if (/^(it|this|that|they|these|those|he|she|we|you|i)$/i.test(subject)) continue;
+
+        let quality = 'moderate';
+        const subjectProper = /^[A-Z]/.test(subject);
+        const objectSpecific = /\d/.test(object) || /^[A-Z]/.test(object) || object.length > 10;
+        const ambiguous = /\b(it|this|that|they)\b/i.test(subject + ' ' + object);
+        if (subjectProper && objectSpecific && !ambiguous) quality = 'strong';
+        else if (ambiguous || subject.length < 4) quality = 'weak';
+
+        triples.push({ subject, predicate, object, quality, source: cleaned.slice(0, 100) });
+        break;
+      }
+    }
+  }
+
+  const seen = new Set();
+  return triples.filter(t => {
+    const k = t.subject.toLowerCase();
+    if (seen.has(k)) return false;
+    seen.add(k);
+    return true;
+  }).slice(0, 10);
+}
+
+// ── Entity Clarity ──
+function analyzeEntityClarity(pd) {
+  const findings = [];
+  if (pd.h1) findings.push({ status: 'pass', text: `H1 tag defines the page topic: "${pd.h1.slice(0, 80)}"` });
+  else findings.push({ status: 'fail', text: 'No H1 tag found \u2014 LLMs rely on H1 to identify the primary topic' });
+
+  if (pd.metaDesc && pd.metaDesc.length > 50) findings.push({ status: 'pass', text: `Meta description present (${pd.metaDesc.length} chars) \u2014 provides a citable summary` });
+  else if (pd.metaDesc) findings.push({ status: 'warn', text: `Meta description is short (${pd.metaDesc.length} chars) \u2014 aim for 120\u2013160 chars` });
+  else findings.push({ status: 'fail', text: 'No meta description \u2014 this is often the first thing LLMs use for summarization' });
+
+  const pronounStarts = pd.sentences.filter(s => /^(It|This|That|These|They|He|She)\s/i.test(s)).length;
+  const ratio = pd.sentences.length > 0 ? pronounStarts / pd.sentences.length : 0;
+  if (ratio > 0.3) findings.push({ status: 'fail', text: `${Math.round(ratio*100)}% of sentences start with ambiguous pronouns \u2014 LLMs lose entity attribution` });
+  else if (ratio > 0.15) findings.push({ status: 'warn', text: `${Math.round(ratio*100)}% of sentences start with pronouns \u2014 consider explicit entity names` });
+  else findings.push({ status: 'pass', text: 'Low pronoun ambiguity \u2014 sentences mostly use explicit subjects' });
+
+  if (pd.h1) {
+    const h1Words = pd.h1.toLowerCase().split(/\s+/).filter(w => w.length > 4);
+    const regex = h1Words.map(w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
+    const mentions = regex ? (pd.textContent.toLowerCase().match(new RegExp(regex, 'g')) || []).length : 0;
+    if (mentions > 10) findings.push({ status: 'pass', text: `Primary entity from H1 referenced ${mentions}+ times \u2014 strong topical consistency` });
+    else if (mentions > 3) findings.push({ status: 'warn', text: `Primary entity from H1 appears only ${mentions} times \u2014 reinforce the main topic` });
+    else findings.push({ status: 'fail', text: 'H1 entity rarely mentioned in body \u2014 this disconnect confuses LLM topic modeling' });
+  }
+
+  if (pd.title && pd.title.length > 10) findings.push({ status: 'pass', text: `Title tag present and descriptive (${pd.title.length} chars)` });
+  else findings.push({ status: 'warn', text: 'Title tag missing or very short' });
+
+  let s = 0;
+  findings.forEach(f => { s += f.status === 'pass' ? 20 : f.status === 'warn' ? 10 : 0; });
+  return { score: Math.min(100, s), findings };
+}
+
+// ── Structured Data ──
+function analyzeStructuredData(pd) {
+  const findings = [];
+  if (pd.jsonLd.length === 0) {
+    findings.push({ status: 'fail', text: 'No JSON-LD structured data \u2014 the primary way LLMs understand page entities' });
+    findings.push({ status: 'fail', text: 'Without Schema.org markup, LLMs must infer entity types from unstructured text' });
+    return { score: 10, findings };
+  }
+  findings.push({ status: 'pass', text: `Found ${pd.jsonLd.length} JSON-LD block(s) \u2014 structured data feeds LLM knowledge graphs` });
+  const types = pd.jsonLd.map(s => s['@type']).filter(Boolean).flat();
+  if (types.length) findings.push({ status: 'pass', text: `Schema types: ${types.join(', ')}` });
+  const all = JSON.stringify(pd.jsonLd);
+  if (/author/i.test(all)) findings.push({ status: 'pass', text: 'Author attribution present \u2014 helps LLMs cite correctly' });
+  else findings.push({ status: 'warn', text: 'No author field \u2014 adding authorship improves citation accuracy' });
+  if (/date(Published|Modified|Created)/i.test(all)) findings.push({ status: 'pass', text: 'Publication date found \u2014 LLMs use this for freshness' });
+  else findings.push({ status: 'warn', text: 'No publication date \u2014 LLMs may not know how current your content is' });
+
+  let s = 30;
+  findings.forEach(f => { s += f.status === 'pass' ? 12 : f.status === 'warn' ? 5 : 0; });
+  return { score: Math.min(100, s), findings };
+}
+
+// ── Content Structure ──
+function analyzeContentStructure(pd) {
+  const findings = [];
+  const totalH = pd.h2s.length + pd.h3s.length;
+  if (totalH >= 4) findings.push({ status: 'pass', text: `Good heading hierarchy: ${pd.h2s.length} H2s and ${pd.h3s.length} H3s for LLM chunking` });
+  else if (totalH >= 2) findings.push({ status: 'warn', text: `Limited heading structure (${totalH} subheadings) \u2014 more headings help LLMs segment content` });
+  else findings.push({ status: 'fail', text: 'Very few subheadings \u2014 LLMs struggle to chunk content without section markers' });
+
+  const lens = pd.sentences.map(s => s.split(/\s+/).length);
+  const avg = lens.length ? lens.reduce((a,b)=>a+b,0)/lens.length : 0;
+  if (avg >= 10 && avg <= 25) findings.push({ status: 'pass', text: `Avg sentence length: ${avg.toFixed(0)} words \u2014 optimal for LLM extraction` });
+  else if (avg > 25) findings.push({ status: 'warn', text: `Sentences are long (avg ${avg.toFixed(0)} words) \u2014 shorter statements are more citable` });
+  else findings.push({ status: 'warn', text: `Sentences very short (avg ${avg.toFixed(0)} words) \u2014 may lack context for meaningful claims` });
+
+  const wc = pd.textContent.split(/\s+/).length;
+  if (wc > 800) findings.push({ status: 'pass', text: `Substantial content (${wc.toLocaleString()} words) \u2014 sufficient depth for multiple claims` });
+  else if (wc > 300) findings.push({ status: 'warn', text: `Moderate length (${wc} words) \u2014 longer content gives LLMs more to cite` });
+  else findings.push({ status: 'fail', text: `Thin content (${wc} words) \u2014 LLMs prefer depth to validate claims` });
+
+  const facts = (pd.textContent.match(/\d+%|\$[\d,.]+|\d{4}|\d+\s*(million|billion|thousand|percent)/gi) || []);
+  if (facts.length > 5) findings.push({ status: 'pass', text: `High factual density (${facts.length} data points) \u2014 specific stats are highly citable` });
+  else if (facts.length > 2) findings.push({ status: 'warn', text: `Some factual content (${facts.length} data points) \u2014 add more stats for citability` });
+  else findings.push({ status: 'fail', text: 'Very few specific facts \u2014 LLMs prefer concrete, verifiable claims' });
+
+  const longP = pd.paragraphs.filter(p => p.length > 500).length;
+  if (longP > 3) findings.push({ status: 'warn', text: `${longP} long paragraphs (500+ chars) \u2014 break up for better LLM chunking` });
+  else findings.push({ status: 'pass', text: 'Paragraph lengths are reasonable \u2014 well-chunked for LLM processing' });
+
+  let s = 0;
+  findings.forEach(f => { s += f.status === 'pass' ? 18 : f.status === 'warn' ? 8 : 0; });
+  return { score: Math.min(100, s), findings };
+}
+
+// ── Recommendations ──
+function generateRecs(rpt) {
+  const recs = [];
+  if (rpt.cosineScore < 0.5) recs.push({ priority: 'high', title: 'Align body content with H1 topic', description: 'Your page content diverges from the H1 heading. Ensure paragraphs directly elaborate on the primary topic. LLMs weigh H1\u2013body coherence heavily when assessing page authority.' });
+  if (rpt.triplesScore < 40) recs.push({ priority: 'high', title: 'Add clear subject-predicate-object statements', description: 'Rewrite key sentences as "[Entity] [does/is] [specific thing]" patterns. Avoid starting with pronouns. E.g. instead of "It provides great results," write "Acme\'s platform reduces processing time by 40%."' });
+  if (rpt.structured.score < 40) recs.push({ priority: 'high', title: 'Add JSON-LD structured data', description: 'Implement Schema.org markup (Article, Product, Organization, FAQ) with @type, name, description, author, and datePublished at minimum.' });
+  if (!rpt.h1Text) recs.push({ priority: 'high', title: 'Add an H1 heading', description: 'The most important signal for LLMs to determine page topic. Add a clear, descriptive H1 naming the primary entity.' });
+  if (rpt.entity.score < 50) recs.push({ priority: 'medium', title: 'Improve entity clarity', description: 'Replace ambiguous pronoun references with explicit entity names. LLMs track entities across sentences \u2014 unclear referents make claims uncitable.' });
+  if (rpt.structure.score < 50) recs.push({ priority: 'medium', title: 'Restructure for scannability', description: 'Add more H2/H3 subheadings for clear topical sections. Each should address a subtopic an LLM might cite independently.' });
+  const facts = (rpt.textContent.match(/\d+%|\$[\d,.]+|\d{4}|\d+\s*(million|billion|thousand|percent)/gi) || []);
+  if (facts.length < 5) recs.push({ priority: 'medium', title: 'Increase factual density', description: 'Add specific numbers, dates, percentages. LLMs are far more likely to cite concrete, verifiable data points.' });
+  if (rpt.cosineScore >= 0.7 && rpt.triplesScore >= 60) recs.push({ priority: 'low', title: 'Add a FAQ section', description: 'Your content is already well-structured. FAQ question-answer pairs directly match how LLMs formulate cited responses.' });
+  return recs.slice(0, 6);
+}
+
+// ── Keywords ──
+function getKeywords(text, limit = 15) {
+  const stops = new Set(['the','a','an','is','are','was','were','be','been','being','have','has','had','do','does','did','will','would','shall','should','may','might','must','can','could','and','but','or','nor','not','no','so','for','yet','both','either','neither','each','every','all','any','few','more','most','other','some','such','than','too','very','just','also','of','in','to','on','at','by','with','from','as','into','about','between','through','after','before','during','without','within','along','against','among','across','over','under','above','below','this','that','these','those','it','its','i','me','my','we','our','you','your','he','his','she','her','they','their','them','what','which','who','how','when','where','why','if','then','there','here','only','own','same','up','out','off','down','back','now','well','way','even','new','one','two','three','much','many','like','get','got','make','made','go','goes','went','take','come','said','know','see','use','used','because','while','still','however','since','s','t','don','re','ve','ll','d','m','nbsp','http','https','www','com']);
+  const words = text.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter(w => w.length > 2 && !stops.has(w));
+  const freq = {};
+  words.forEach(w => { freq[w] = (freq[w] || 0) + 1; });
+  return Object.entries(freq).sort((a,b) => b[1]-a[1]).slice(0, limit).map(e => e[0]);
+}
+
+// ── Score helpers ──
+function scoreColor(s, max=100) { const p=(s/max)*100; return p>=65?'score-high':p>=35?'score-mid':'score-low'; }
+function scoreHex(s, max=100) { const p=(s/max)*100; return p>=65?'var(--green)':p>=35?'var(--orange)':'var(--red)'; }
+
+// ── Tab switching ──
+function switchTab(tab) {
+  document.querySelectorAll('.input-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.input-pane').forEach(p => p.classList.remove('active'));
+  document.querySelector(`.input-tab:nth-child(${tab === 'url' ? 1 : 2})`).classList.add('active');
+  document.getElementById(`pane-${tab}`).classList.add('active');
+}
+
+// ── Core analysis (shared by both modes) ──
+async function runAnalysis(html, url) {
+  document.getElementById('report').classList.remove('active');
+  document.getElementById('loading').classList.add('active');
+  document.querySelectorAll('.load-step').forEach((el, i) => {
+    el.classList.remove('active', 'done');
+    el.querySelector('.step-icon').textContent = i + 1;
+  });
+  setProgress(0);
+
+  // Skip fetch step if HTML was pasted
+  setStep('fetch', 'done');
+  document.querySelector('.load-step[data-step="fetch"] .step-icon').textContent = '\u2713';
+  setProgress(15);
+
+  setStep('parse', 'active');
+  await new Promise(r => setTimeout(r, 150));
+  const pd = extractContent(html);
+  if (!pd.textContent || pd.textContent.length < 50)
+    throw new Error('Could not extract meaningful content. The page may be JavaScript-rendered (SPA) or have very little text.');
+  setStep('parse', 'done'); setProgress(25);
+
+  setStep('model', 'active');
+  if (!extractor) extractor = await pipeline('feature-extraction', 'Xenova/all-MiniLM-L6-v2');
+  setStep('model', 'done'); setProgress(50);
+
+  setStep('embed', 'active');
+  const h1Text = pd.h1 || pd.title || '';
+  const h1Emb = await getEmbedding(h1Text);
+  const chunks = [];
+  for (let i = 0; i < pd.textContent.length; i += 500) chunks.push(pd.textContent.slice(i, i+500));
+  const chunkEmbs = [];
+  for (const c of chunks.slice(0, 10)) chunkEmbs.push(await getEmbedding(c));
+  const dim = h1Emb.length;
+  const avgEmb = new Array(dim).fill(0);
+  for (const e of chunkEmbs) for (let i=0;i<dim;i++) avgEmb[i] += e[i];
+  for (let i=0;i<dim;i++) avgEmb[i] /= chunkEmbs.length;
+  const cosineScore = cosineSim(h1Emb, avgEmb);
+  setStep('embed', 'done'); setProgress(70);
+
+  setStep('triples', 'active');
+  await new Promise(r => setTimeout(r, 100));
+  const triples = extractTriples(pd.sentences);
+  const strongN = triples.filter(t => t.quality==='strong').length;
+  const modN = triples.filter(t => t.quality==='moderate').length;
+  const triplesScore = Math.min(100, Math.round((strongN*12)+(modN*7)+(triples.length*3)+(triples.length>=5?15:0)));
+  setStep('triples', 'done'); setProgress(85);
+
+  setStep('score', 'active');
+  const entity = analyzeEntityClarity(pd);
+  const structured = analyzeStructuredData(pd);
+  const structure = analyzeContentStructure(pd);
+
+  let cosineExplain;
+  if (cosineScore >= 0.7) cosineExplain = 'Strong semantic alignment. The body content is tightly focused on the H1 topic. LLMs will confidently associate this page with its primary subject.';
+  else if (cosineScore >= 0.45) cosineExplain = 'Moderate alignment. The content relates to the H1 but includes tangential material. Tightening focus would improve LLM topic attribution.';
+  else cosineExplain = 'Weak alignment. Body content diverges substantially from the H1. LLMs may struggle to determine what this page is authoritatively about.';
+
+  let tripleAnalysis;
+  if (triplesScore >= 60) tripleAnalysis = `Extracted ${triples.length} semantic triples with ${strongN} strong assertions. Good claim density \u2014 LLMs can parse and cite specific facts from this page.`;
+  else if (triplesScore >= 30) tripleAnalysis = `Found ${triples.length} extractable triples, but only ${strongN} are unambiguous. Rewriting key claims in clear Subject\u2013Predicate\u2013Object form would improve citability.`;
+  else tripleAnalysis = `Only ${triples.length} triples extracted, most with weak structure. The content lacks clear declarative statements. Restructure sentences around explicit entities and concrete predicates.`;
+
+  const overall = Math.round(
+    (cosineScore*100*0.25) + (triplesScore*0.25) + (entity.score*0.2) + (structured.score*0.15) + (structure.score*0.15)
+  );
+
+  const recs = generateRecs({ cosineScore, triplesScore, structured, entity, structure, h1Text, textContent: pd.textContent });
+  const bodyKw = getKeywords(pd.textContent);
+  const h1Kw = new Set(getKeywords(h1Text, 20));
+
+  setStep('score', 'done'); setProgress(100);
+  await new Promise(r => setTimeout(r, 400));
+  document.getElementById('loading').classList.remove('active');
+
+  renderReport({ overall, h1Text, cosineScore, cosineExplain, triples, triplesScore, tripleAnalysis, entity, structured, structure, recs, bodyKw, h1Kw }, url);
+}
+
+// ── Analyze via URL fetch ──
+async function analyze() {
+  const url = document.getElementById('urlInput').value.trim();
+  const btn = document.getElementById('analyzeBtn');
+  if (!url || !url.startsWith('http')) return showError('Please enter a valid URL starting with http:// or https://');
+
+  btn.disabled = true;
+  try {
+    document.getElementById('report').classList.remove('active');
+    document.getElementById('loading').classList.add('active');
+    document.querySelectorAll('.load-step').forEach((el, i) => {
+      el.classList.remove('active', 'done');
+      el.querySelector('.step-icon').textContent = i + 1;
+    });
+    setProgress(0);
+
+    setStep('fetch', 'active'); setProgress(5);
+    const html = await fetchPage(url);
+    setStep('fetch', 'done'); setProgress(15);
+    document.getElementById('loading').classList.remove('active');
+
+    await runAnalysis(html, url);
+  } catch (err) {
+    document.getElementById('loading').classList.remove('active');
+    showError(err.message);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+// ── Analyze via pasted HTML ──
+async function analyzePaste() {
+  const html = document.getElementById('htmlPaste').value.trim();
+  const url = document.getElementById('pasteUrlInput').value.trim() || 'Pasted HTML';
+  const btn = document.getElementById('analyzePasteBtn');
+
+  if (!html || html.length < 50) return showError('Please paste the full HTML source of your page. Right-click your page → View Page Source → Select All → Copy.');
+
+  btn.disabled = true;
+  try {
+    await runAnalysis(html, url);
+  } catch (err) {
+    document.getElementById('loading').classList.remove('active');
+    showError(err.message);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function renderReport(d, url) {
+  window._lastReport = { data: d, url };
+  const r = document.getElementById('report');
+  const circ = 2 * Math.PI * 48;
+  const off = circ - (d.cosineScore * circ);
+
+  r.innerHTML = `
+    <div class="report-header">
+      <div>
+        <h2>Analysis Report</h2>
+        <div class="url-display">${escHtml(url)}</div>
+      </div>
+      <div style="display:flex;align-items:flex-start;gap:12px;">
+        <button class="btn-export" onclick="window._exportExcel()">
+          <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Export .xlsx
+        </button>
+        <div class="overall-score">
+          <div class="label">LLM Cite Score</div>
+          <div class="value ${scoreColor(d.overall)}">${d.overall}</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="report-section">
+      <div class="section-header">
+        <h3><span class="icon" style="background:var(--blue-dim);color:var(--blue)">\u27C1</span> H1\u2013Content Cosine Similarity</h3>
+        <span class="section-score ${scoreColor(d.cosineScore, 1)}">${d.cosineScore.toFixed(3)}</span>
+      </div>
+      <div class="section-body">
+        <div class="cosine-viz">
+          <div class="cosine-circle">
+            <svg viewBox="0 0 120 120"><circle class="track" cx="60" cy="60" r="48"/><circle class="fill-ring" cx="60" cy="60" r="48" stroke="${scoreHex(d.cosineScore,1)}" stroke-dasharray="${circ}" stroke-dashoffset="${off}"/></svg>
+            <div class="center-text ${scoreColor(d.cosineScore,1)}">${(d.cosineScore*100).toFixed(0)}%</div>
+          </div>
+          <div class="cosine-detail">
+            <h4>Primary Heading (H1)</h4>
+            <div class="h1-display">${escHtml(d.h1Text) || 'No H1 found \u2014 using title tag as fallback'}</div>
+            <p>${d.cosineExplain}</p>
+            <div class="keywords-row" style="margin-top:14px">
+              <span style="font-family:var(--mono);font-size:10px;color:var(--text-dim);margin-right:4px;align-self:center;">TOP TERMS:</span>
+              ${d.bodyKw.map(kw => `<span class="kw-chip ${d.h1Kw.has(kw)?'in-h1':''}">${escHtml(kw)}</span>`).join('')}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="report-section">
+      <div class="section-header">
+        <h3><span class="icon" style="background:var(--accent-dim);color:var(--accent)">\u25EC</span> Semantic Triples</h3>
+        <span class="section-score ${scoreColor(d.triplesScore)}">${d.triplesScore}/100</span>
+      </div>
+      <div class="section-body">
+        <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px;line-height:1.6">${d.tripleAnalysis}</p>
+        <div class="score-bar-container">
+          <div class="score-bar-label"><span>Triple extraction quality</span><span>${d.triplesScore}%</span></div>
+          <div class="score-bar"><div class="score-bar-fill" style="width:${d.triplesScore}%;background:${scoreHex(d.triplesScore)}"></div></div>
+        </div>
+        ${d.triples.length ? `<table class="triples-table"><thead><tr><th>Subject</th><th>Predicate</th><th>Object</th><th>Quality</th></tr></thead><tbody>${d.triples.map(t => `<tr><td class="subject">${escHtml(t.subject)}</td><td class="predicate">${escHtml(t.predicate)}</td><td class="object">${escHtml(t.object)}</td><td><span class="triple-quality quality-${t.quality}">${t.quality}</span></td></tr>`).join('')}</tbody></table>` : '<p style="color:var(--text-dim);font-size:13px;">No clear semantic triples could be extracted.</p>'}
+      </div>
+    </div>
+
+    <div class="report-section">
+      <div class="section-header">
+        <h3><span class="icon" style="background:var(--green-dim);color:var(--green)">\u25C9</span> Entity Clarity</h3>
+        <span class="section-score ${scoreColor(d.entity.score)}">${d.entity.score}/100</span>
+      </div>
+      <div class="section-body"><ul class="findings-list">${d.entity.findings.map(f => `<li><span class="finding-icon finding-${f.status}">${f.status==='pass'?'\u2713':f.status==='warn'?'!':'\u2717'}</span><span>${f.text}</span></li>`).join('')}</ul></div>
+    </div>
+
+    <div class="report-section">
+      <div class="section-header">
+        <h3><span class="icon" style="background:var(--orange-dim);color:var(--orange)">{ }</span> Structured Data</h3>
+        <span class="section-score ${scoreColor(d.structured.score)}">${d.structured.score}/100</span>
+      </div>
+      <div class="section-body"><ul class="findings-list">${d.structured.findings.map(f => `<li><span class="finding-icon finding-${f.status}">${f.status==='pass'?'\u2713':f.status==='warn'?'!':'\u2717'}</span><span>${f.text}</span></li>`).join('')}</ul></div>
+    </div>
+
+    <div class="report-section">
+      <div class="section-header">
+        <h3><span class="icon" style="background:var(--blue-dim);color:var(--blue)">\u2261</span> Content Structure</h3>
+        <span class="section-score ${scoreColor(d.structure.score)}">${d.structure.score}/100</span>
+      </div>
+      <div class="section-body"><ul class="findings-list">${d.structure.findings.map(f => `<li><span class="finding-icon finding-${f.status}">${f.status==='pass'?'\u2713':f.status==='warn'?'!':'\u2717'}</span><span>${f.text}</span></li>`).join('')}</ul></div>
+    </div>
+
+    <div class="report-section">
+      <div class="section-header">
+        <h3><span class="icon" style="background:var(--accent-dim);color:var(--accent)">\u2192</span> Recommendations</h3>
+      </div>
+      <div class="section-body">
+        <div class="recs-grid">${d.recs.map((rec, i) => `<div class="rec-card"><div class="rec-priority priority-${rec.priority}">${i+1}</div><div class="rec-content"><h4>${escHtml(rec.title)}</h4><p>${escHtml(rec.description)}</p></div></div>`).join('')}</div>
+      </div>
+    </div>
+  `;
+  r.classList.add('active');
+  r.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// ── Export to Excel ──
+function exportToExcel() {
+  const rpt = window._lastReport;
+  if (!rpt) return;
+  const { data: d, url } = rpt;
+  const XLSX = window.XLSX;
+  if (!XLSX) { showError('SheetJS library failed to load. Please refresh and try again.'); return; }
+
+  const wb = XLSX.utils.book_new();
+
+  // ── Sheet 1: Summary ──
+  const summaryData = [
+    ['VectorVision — LLM Citation Optimization Report'],
+    [],
+    ['URL', url],
+    ['Date', new Date().toLocaleDateString('en-US', { year:'numeric', month:'long', day:'numeric' })],
+    ['H1 Tag', d.h1Text || '(none found)'],
+    [],
+    ['OVERALL SCORES'],
+    ['Metric', 'Score', 'Max', 'Rating'],
+    ['LLM Cite Score (Overall)', d.overall, 100, ratingLabel(d.overall)],
+    ['H1–Content Cosine Similarity', +(d.cosineScore * 100).toFixed(1), 100, ratingLabel(d.cosineScore * 100)],
+    ['Semantic Triples', d.triplesScore, 100, ratingLabel(d.triplesScore)],
+    ['Entity Clarity', d.entity.score, 100, ratingLabel(d.entity.score)],
+    ['Structured Data', d.structured.score, 100, ratingLabel(d.structured.score)],
+    ['Content Structure', d.structure.score, 100, ratingLabel(d.structure.score)],
+    [],
+    ['COSINE SIMILARITY ANALYSIS'],
+    ['Score', d.cosineScore.toFixed(4)],
+    ['Interpretation', d.cosineExplain],
+  ];
+  const ws1 = XLSX.utils.aoa_to_sheet(summaryData);
+  ws1['!cols'] = [{ wch: 35 }, { wch: 15 }, { wch: 8 }, { wch: 14 }];
+  // Merge title
+  ws1['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 3 } }];
+  XLSX.utils.book_append_sheet(wb, ws1, 'Summary');
+
+  // ── Sheet 2: Semantic Triples ──
+  const triplesHeader = [
+    ['SEMANTIC TRIPLES ANALYSIS'],
+    ['Score', `${d.triplesScore}/100`],
+    ['Analysis', d.tripleAnalysis],
+    [],
+    ['Subject', 'Predicate', 'Object', 'Quality'],
+  ];
+  const triplesRows = d.triples.map(t => [t.subject, t.predicate, t.object, t.quality]);
+  const ws2 = XLSX.utils.aoa_to_sheet([...triplesHeader, ...triplesRows]);
+  ws2['!cols'] = [{ wch: 30 }, { wch: 22 }, { wch: 40 }, { wch: 12 }];
+  ws2['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 3 } }];
+  XLSX.utils.book_append_sheet(wb, ws2, 'Semantic Triples');
+
+  // ── Sheet 3: Entity Clarity ──
+  const entityRows = [
+    ['ENTITY CLARITY'],
+    ['Score', `${d.entity.score}/100`],
+    [],
+    ['Status', 'Finding'],
+    ...d.entity.findings.map(f => [f.status.toUpperCase(), f.text]),
+  ];
+  const ws3 = XLSX.utils.aoa_to_sheet(entityRows);
+  ws3['!cols'] = [{ wch: 10 }, { wch: 80 }];
+  ws3['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 1 } }];
+  XLSX.utils.book_append_sheet(wb, ws3, 'Entity Clarity');
+
+  // ── Sheet 4: Structured Data ──
+  const structuredRows = [
+    ['STRUCTURED DATA'],
+    ['Score', `${d.structured.score}/100`],
+    [],
+    ['Status', 'Finding'],
+    ...d.structured.findings.map(f => [f.status.toUpperCase(), f.text]),
+  ];
+  const ws4 = XLSX.utils.aoa_to_sheet(structuredRows);
+  ws4['!cols'] = [{ wch: 10 }, { wch: 80 }];
+  ws4['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 1 } }];
+  XLSX.utils.book_append_sheet(wb, ws4, 'Structured Data');
+
+  // ── Sheet 5: Content Structure ──
+  const contentRows = [
+    ['CONTENT STRUCTURE'],
+    ['Score', `${d.structure.score}/100`],
+    [],
+    ['Status', 'Finding'],
+    ...d.structure.findings.map(f => [f.status.toUpperCase(), f.text]),
+  ];
+  const ws5 = XLSX.utils.aoa_to_sheet(contentRows);
+  ws5['!cols'] = [{ wch: 10 }, { wch: 80 }];
+  ws5['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 1 } }];
+  XLSX.utils.book_append_sheet(wb, ws5, 'Content Structure');
+
+  // ── Sheet 6: Recommendations ──
+  const recsRows = [
+    ['RECOMMENDATIONS'],
+    [],
+    ['Priority', 'Recommendation', 'Details'],
+    ...d.recs.map(r => [r.priority.toUpperCase(), r.title, r.description]),
+  ];
+  const ws6 = XLSX.utils.aoa_to_sheet(recsRows);
+  ws6['!cols'] = [{ wch: 10 }, { wch: 35 }, { wch: 80 }];
+  ws6['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 2 } }];
+  XLSX.utils.book_append_sheet(wb, ws6, 'Recommendations');
+
+  // ── Sheet 7: Top Keywords ──
+  const kwRows = [
+    ['TOP CONTENT KEYWORDS'],
+    [],
+    ['Keyword', 'Present in H1'],
+    ...d.bodyKw.map(kw => [kw, d.h1Kw.has(kw) ? 'Yes' : '']),
+  ];
+  const ws7 = XLSX.utils.aoa_to_sheet(kwRows);
+  ws7['!cols'] = [{ wch: 20 }, { wch: 14 }];
+  ws7['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 1 } }];
+  XLSX.utils.book_append_sheet(wb, ws7, 'Keywords');
+
+  // Generate filename from URL
+  let filename = 'vectorvision-report';
+  try {
+    const hostname = new URL(url).hostname.replace(/^www\./, '').replace(/\./g, '-');
+    filename = `vectorvision-${hostname}`;
+  } catch {}
+
+  XLSX.writeFile(wb, `${filename}.xlsx`);
+}
+
+function ratingLabel(score) {
+  if (score >= 65) return 'Good';
+  if (score >= 35) return 'Needs Work';
+  return 'Poor';
+}
+
+window._analyze = analyze;
+window._analyzePaste = analyzePaste;
+window._switchTab = switchTab;
+window._exportExcel = exportToExcel;
+document.getElementById('urlInput').addEventListener('keydown', e => { if (e.key === 'Enter') analyze(); });
+</script>
+</body>
+</html>
