@@ -491,6 +491,142 @@
       color: rgba(255,255,255,0.7);
     }
 
+    /* User Research Section */
+    .user-research {
+      background: var(--cream);
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .feedback-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+      margin-top: 3rem;
+    }
+
+    @media (max-width: 700px) {
+      .feedback-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .feedback-card {
+      background: var(--paper);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.75rem;
+      position: relative;
+      transition: all 0.3s ease;
+    }
+
+    .feedback-card:hover {
+      box-shadow: 0 8px 30px var(--shadow);
+      transform: translateY(-2px);
+    }
+
+    .feedback-card.resolved {
+      border-color: var(--accent);
+    }
+
+    .feedback-card.resolved::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: var(--accent);
+      border-radius: 12px 12px 0 0;
+    }
+
+    .feedback-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      padding: 0.3rem 0.6rem;
+      border-radius: 4px;
+      margin-bottom: 1rem;
+    }
+
+    .feedback-status.resolved {
+      background: var(--accent-light);
+      color: var(--accent);
+    }
+
+    .feedback-status.in-progress {
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    .feedback-status.planned {
+      background: #f3f4f6;
+      color: #6b7280;
+    }
+
+    .feedback-status svg {
+      width: 12px;
+      height: 12px;
+    }
+
+    .feedback-card h3 {
+      font-size: 1.05rem;
+      font-weight: 500;
+      margin-bottom: 0.5rem;
+      line-height: 1.4;
+    }
+
+    .feedback-card p {
+      font-size: 0.9rem;
+      margin-bottom: 0;
+      color: var(--muted);
+    }
+
+    .feedback-card .resolution {
+      margin-top: 1rem;
+      padding-top: 1rem;
+      border-top: 1px dashed var(--border);
+      font-size: 0.85rem;
+      color: var(--accent);
+      display: flex;
+      align-items: flex-start;
+      gap: 0.5rem;
+    }
+
+    .feedback-card .resolution svg {
+      width: 16px;
+      height: 16px;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+
+    .research-intro {
+      display: flex;
+      align-items: flex-start;
+      gap: 1.5rem;
+      margin-bottom: 1rem;
+    }
+
+    .research-intro-icon {
+      width: 56px;
+      height: 56px;
+      background: var(--accent-light);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .research-intro-icon svg {
+      width: 28px;
+      height: 28px;
+      stroke: var(--accent);
+    }
+
     /* Learnings */
     .learnings-list {
       margin-top: 2rem;
@@ -817,14 +953,85 @@
     </div>
   </section>
 
+  <!-- User Research -->
+  <section class="user-research">
+    <div class="container">
+      <span class="section-label">User Research</span>
+      <div class="research-intro animate-on-scroll">
+        <div class="research-intro-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+            <circle cx="9" cy="7" r="4"></circle>
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+          </svg>
+        </div>
+        <div>
+          <h2>Shaped by real feedback</h2>
+          <p>
+            Early users helped identify friction points and missing features. 
+            Their feedback directly influenced the development roadmap and led to 
+            tangible improvements in the editing experience.
+          </p>
+        </div>
+      </div>
+      <div class="feedback-grid">
+        <div class="feedback-card resolved animate-on-scroll">
+          <div class="feedback-status resolved">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+            Shipped
+          </div>
+          <h3>"Pressing Enter should continue the same block type"</h3>
+          <p>When creating a checklist or bullet list, users expected the next line to match—making rapid list entry seamless.</p>
+          <div class="resolution">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="9 11 12 14 22 4"></polyline>
+              <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
+            </svg>
+            <span>Implemented smart block type continuation</span>
+          </div>
+        </div>
+        <div class="feedback-card resolved animate-on-scroll">
+          <div class="feedback-status resolved">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+            Shipped
+          </div>
+          <h3>"I want separate blocks for different lists"</h3>
+          <p>Users wanted distinct sections—like a shopping list separate from a tasks list—organized within the same page.</p>
+          <div class="resolution">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="9 11 12 14 22 4"></polyline>
+              <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
+            </svg>
+            <span>Added support for distinct block sections</span>
+          </div>
+        </div>
+        <div class="feedback-card animate-on-scroll">
+          <div class="feedback-status planned">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"></circle>
+            </svg>
+            Planned
+          </div>
+          <h3>"I'd love a Kanban view for tasks"</h3>
+          <p>Users want to visualize and manage tasks in a board layout—dragging items between columns like To Do, In Progress, and Done.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <!-- Roadmap -->
   <section class="roadmap">
     <div class="container">
       <span class="section-label">Roadmap</span>
       <h2>Where it's headed</h2>
       <p>
-        A six-phase plan from MVP to monetization. Building in public means priorities 
-        shift based on user feedback and technical learnings.
+        Building in public means priorities shift based on user feedback 
+        and technical learnings. Here's what's next.
       </p>
       <div class="roadmap-timeline">
         <div class="roadmap-item">
@@ -893,40 +1100,6 @@
               <span class="roadmap-tag">Real-time</span>
               <span class="roadmap-tag">Workspaces</span>
               <span class="roadmap-tag">Comments</span>
-            </div>
-          </div>
-        </div>
-        <div class="roadmap-item">
-          <div class="roadmap-marker">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="12" cy="12" r="3"></circle>
-            </svg>
-          </div>
-          <div class="roadmap-content">
-            <div class="roadmap-phase">Phase 5 – Future</div>
-            <h3>Native Mobile Apps</h3>
-            <p>iOS and Android apps for a truly native mobile experience.</p>
-            <div class="roadmap-tags">
-              <span class="roadmap-tag">iOS</span>
-              <span class="roadmap-tag">Android</span>
-              <span class="roadmap-tag">Native</span>
-            </div>
-          </div>
-        </div>
-        <div class="roadmap-item">
-          <div class="roadmap-marker">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="12" cy="12" r="3"></circle>
-            </svg>
-          </div>
-          <div class="roadmap-content">
-            <div class="roadmap-phase">Phase 6 – Future</div>
-            <h3>Monetization</h3>
-            <p>Freemium tiers via Stripe, potential lifetime purchase option, and team/B2B pricing.</p>
-            <div class="roadmap-tags">
-              <span class="roadmap-tag">Stripe</span>
-              <span class="roadmap-tag">Freemium</span>
-              <span class="roadmap-tag">Teams</span>
             </div>
           </div>
         </div>
@@ -1019,13 +1192,7 @@
         Feedback, feature requests, and contributions are welcome.
       </p>
       <div class="cta-buttons">
-        <a href="https://github.com/1jwt/northfork-notes" class="btn btn-primary" target="_blank" rel="noopener">
-          <svg viewBox="0 0 24 24" fill="currentColor">
-            <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
-          </svg>
-          View on GitHub
-        </a>
-        <a href="#" class="btn btn-secondary">
+        <a href="https://notes.northfork.blog" class="btn btn-primary" target="_blank" rel="noopener">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
             <polyline points="15 3 21 3 21 9"></polyline>
@@ -1038,7 +1205,7 @@
   </section>
 
   <footer>
-    <p>Built with intention. Northfork Notes © 2025</p>
+    <p>Built with intention. Northfork Notes © 2026</p>
   </footer>
 
   <script>
