@@ -17,7 +17,8 @@
   var PROJECTS = [
     { id: "j125", label: "Jonny", page: "albums-jonny.html" },
     { id: "scuba-steves-music-journey", label: "Scuba Steve", page: "albums-steve.html" },
-    { id: "chris-flaig", label: "Chris", page: "albums-chris.html" }
+    { id: "chris-flaig", label: "Chris", page: "albums-chris.html" },
+    { id: "slevin7", label: "Slevin", page: "albums-slevin.html" }
   ];
 
   var API_BASE = "https://1001albumsgenerator.com/api/v1/projects/";
@@ -113,6 +114,7 @@
   .a1001c-table th, .a1001c-table td { padding: 6px 8px; text-align: right; }
   .a1001c-table th:first-child, .a1001c-table td:first-child { text-align: left; color: var(--ink-2); font-weight: 400; }
   .a1001c-table thead th { font-size: 0.76rem; color: var(--muted); font-weight: 700; border-bottom: 1px solid var(--grid); }
+  .a1001c-table thead .a1001c-person { white-space: nowrap; justify-content: flex-end; }
   .a1001c-table tbody tr + tr td { border-top: 1px solid var(--grid); }
   .a1001c-table td { font-variant-numeric: tabular-nums; }
 
@@ -137,21 +139,33 @@
 
   function fetchProject(project) {
     var cacheKey = "a1001:" + project;
+    var stale = null;
     try {
       var cached = JSON.parse(localStorage.getItem(cacheKey));
-      if (cached && Date.now() - cached.at < CACHE_TTL_MS) {
-        return Promise.resolve(cached.data);
+      if (cached && cached.data) {
+        if (Date.now() - cached.at < CACHE_TTL_MS) return Promise.resolve(cached.data);
+        stale = cached.data;
       }
     } catch (e) { /* ignore bad cache */ }
 
-    return fetch(API_BASE + encodeURIComponent(project)).then(function (res) {
-      if (!res.ok) throw new Error(project + ": API responded " + res.status);
-      return res.json();
-    }).then(function (data) {
-      try {
-        localStorage.setItem(cacheKey, JSON.stringify({ at: Date.now(), data: data }));
-      } catch (e) { /* no cache — fine */ }
-      return data;
+    function doFetch() {
+      return fetch(API_BASE + encodeURIComponent(project)).then(function (res) {
+        if (!res.ok) throw new Error(project + ": API responded " + res.status);
+        return res.json();
+      }).then(function (data) {
+        try {
+          localStorage.setItem(cacheKey, JSON.stringify({ at: Date.now(), data: data }));
+        } catch (e) { /* no cache — fine */ }
+        return data;
+      });
+    }
+
+    // With 4+ people a cold load can trip the 3 req/min limit: fall back to
+    // stale cache if we have it, otherwise wait out the window and retry once.
+    return doFetch().catch(function (err) {
+      if (stale) return stale;
+      return new Promise(function (resolve) { setTimeout(resolve, 25000); })
+        .then(doFetch);
     });
   }
 
