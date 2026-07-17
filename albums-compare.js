@@ -18,7 +18,8 @@
     { id: "j125", label: "Jonny", page: "albums-jonny.html" },
     { id: "scuba-steves-music-journey", label: "Scuba Steve", page: "albums-steve.html" },
     { id: "chris-flaig", label: "Chris", page: "albums-chris.html" },
-    { id: "slevin7", label: "Slevin", page: "albums-slevin.html" }
+    { id: "slevin7", label: "Slevin", page: "albums-slevin.html" },
+    { id: "hunter666", label: "Hunter", page: "albums-hunter.html" }
   ];
 
   var API_BASE = "https://1001albumsgenerator.com/api/v1/projects/";
@@ -35,7 +36,7 @@
     --grid:    #e1e0d9;
     --border:  rgba(11, 11, 11, 0.10);
     --accent:  #2a78d6;
-    --p1: #2a78d6; --p2: #1baf7a; --p3: #eda100; --p4: #008300;
+    --p1: #2a78d6; --p2: #1baf7a; --p3: #eda100; --p4: #008300; --p5: #4a3aa7;
 
     font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
     color: var(--ink);
@@ -59,7 +60,7 @@
       --grid:    #2c2c2a;
       --border:  rgba(255, 255, 255, 0.10);
       --accent:  #3987e5;
-      --p1: #3987e5; --p2: #199e70; --p3: #c98500; --p4: #008300;
+      --p1: #3987e5; --p2: #199e70; --p3: #c98500; --p4: #008300; --p5: #9085e9;
     }
   }
   .a1001c * { box-sizing: border-box; margin: 0; }
@@ -164,13 +165,18 @@
       });
     }
 
-    // With 4+ people a cold load can trip the 3 req/min limit: fall back to
-    // stale cache if we have it, otherwise wait out the window and retry once.
-    return doFetch().catch(function (err) {
-      if (stale) return stale;
-      return new Promise(function (resolve) { setTimeout(resolve, 25000); })
-        .then(doFetch);
-    });
+    // With 4+ people a cold load trips the 3 req/min limit: fall back to
+    // stale cache if we have it, otherwise keep retrying (spaced out) until
+    // the rate-limit window rolls over.
+    function attempt(triesLeft) {
+      return doFetch().catch(function (err) {
+        if (stale) return stale;
+        if (triesLeft <= 0) throw err;
+        return new Promise(function (resolve) { setTimeout(resolve, 25000); })
+          .then(function () { return attempt(triesLeft - 1); });
+      });
+    }
+    return attempt(3);
   }
 
   // One request at a time, to stay polite with the rate limit.
@@ -212,7 +218,7 @@
     };
   }
 
-  function personColor(i) { return "var(--p" + Math.min(i + 1, 4) + ")"; }
+  function personColor(i) { return "var(--p" + Math.min(i + 1, 5) + ")"; }
 
   function personLabel(s, i) {
     var name = esc(s.cfg.label);
