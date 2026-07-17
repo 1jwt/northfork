@@ -41,6 +41,9 @@
     border: 1px solid var(--border);
     border-radius: 14px;
     padding: 22px;
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
     max-width: 720px;
     line-height: 1.45;
   }

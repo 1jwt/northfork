@@ -43,6 +43,9 @@
     border: 1px solid var(--border);
     border-radius: 14px;
     padding: 22px;
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
     max-width: 720px;
     line-height: 1.45;
   }
@@ -110,6 +113,7 @@
   .a1001c-bar-value { font-size: 0.82rem; color: var(--ink-2); font-variant-numeric: tabular-nums; white-space: nowrap; }
   .a1001c-crown { font-size: 0.8rem; }
 
+  .a1001c-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
   .a1001c-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
   .a1001c-table th, .a1001c-table td { padding: 6px 8px; text-align: right; }
   .a1001c-table th:first-child, .a1001c-table td:first-child { text-align: left; color: var(--ink-2); font-weight: 400; }
@@ -257,7 +261,7 @@
     html += "</div>";
 
     html += '<div class="a1001c-section">Details</div>' +
-      '<table class="a1001c-table"><thead><tr><th></th>';
+      '<div class="a1001c-scroll"><table class="a1001c-table"><thead><tr><th></th>';
     people.forEach(function (s, i) { html += "<th>" + personLabel(s, i) + "</th>"; });
     html += "</tr></thead><tbody>";
     [
@@ -273,7 +277,7 @@
       people.forEach(function (s) { html += "<td>" + row[1](s) + "</td>"; });
       html += "</tr>";
     });
-    html += "</tbody></table>";
+    html += "</tbody></table></div>";
 
     html += '<div class="a1001c-note">Data from 1001albumsgenerator.com, refreshed at most every 10 minutes.</div>';
 
