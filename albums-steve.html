@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Albums — Scuba Steve's 1001 albums progress</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 32px 16px;
+      background: #f9f9f7;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    }
+    @media (prefers-color-scheme: dark) {
+      body { background: #0d0d0d; color: #fff; }
+      a { color: #3987e5; }
+    }
+    .page-head { max-width: 720px; width: 100%; margin-bottom: 20px; }
+    .page-head h1 { font-size: 1.6rem; margin: 0 0 6px; }
+    .page-head p { margin: 0; color: #898781; font-size: 0.9rem; }
+  </style>
+</head>
+<body>
+  <div class="page-head">
+    <h1>Scuba Steve's albums</h1>
+    <p>Progress through the
+      <a href="https://1001albumsgenerator.com" target="_blank" rel="noopener">1001 Albums Generator</a>
+      · <a href="albums.html">compare us all</a></p>
+  </div>
+
+  <div id="albums-1001" data-project="scuba-steves-music-journey"></div>
+  <script src="albums-widget.js" defer></script>
+</body>
+</html>
