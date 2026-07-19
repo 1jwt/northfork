@@ -19,7 +19,9 @@
     { id: "scuba-steves-music-journey", label: "Scuba Steve", page: "albums-steve.html" },
     { id: "chris-flaig", label: "Chris", page: "albums-chris.html" },
     { id: "slevin7", label: "Slevin", page: "albums-slevin.html" },
-    { id: "hunter666", label: "Hunter", page: "albums-hunter.html" }
+    { id: "hunter666", label: "Hunter", page: "albums-hunter.html" },
+    { id: "mcrcsms", label: "mcrcsms", page: "albums-mcrcsms.html" },
+    { id: "boredom96", label: "boredom96", page: "albums-boredom96.html" }
   ];
 
   var API_BASE = "https://1001albumsgenerator.com/api/v1/projects/";
@@ -36,7 +38,7 @@
     --grid:    #e1e0d9;
     --border:  rgba(11, 11, 11, 0.10);
     --accent:  #2a78d6;
-    --p1: #2a78d6; --p2: #1baf7a; --p3: #eda100; --p4: #008300; --p5: #4a3aa7;
+    --p1: #2a78d6; --p2: #1baf7a; --p3: #eda100; --p4: #008300; --p5: #4a3aa7; --p6: #e34948; --p7: #e87ba4;
 
     font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
     color: var(--ink);
@@ -60,7 +62,7 @@
       --grid:    #2c2c2a;
       --border:  rgba(255, 255, 255, 0.10);
       --accent:  #3987e5;
-      --p1: #3987e5; --p2: #199e70; --p3: #c98500; --p4: #008300; --p5: #9085e9;
+      --p1: #3987e5; --p2: #199e70; --p3: #c98500; --p4: #008300; --p5: #9085e9; --p6: #e66767; --p7: #d55181;
     }
   }
   .a1001c * { box-sizing: border-box; margin: 0; }
@@ -179,13 +181,23 @@
     return attempt(3);
   }
 
-  // One request at a time, to stay polite with the rate limit.
-  function fetchAll(projects) {
+  // One request at a time, to stay polite with the rate limit. Calls
+  // onUpdate with the results so far after each person loads, so the page
+  // fills in progressively instead of waiting for the whole roster.
+  function fetchAll(projects, onUpdate) {
     var results = [];
+    var failed = [];
     var chain = Promise.resolve();
-    projects.forEach(function (p) {
+    projects.forEach(function (p, idx) {
       chain = chain.then(function () {
-        return fetchProject(p.id).then(function (data) { results.push({ cfg: p, data: data }); });
+        return fetchProject(p.id).then(function (data) {
+          results.push({ cfg: p, data: data, idx: idx });
+          results.sort(function (a, b) { return a.idx - b.idx; });
+          onUpdate(results, projects.length - results.length - failed.length, failed);
+        }).catch(function (err) {
+          failed.push(p.label);
+          onUpdate(results, projects.length - results.length - failed.length, failed);
+        });
       });
     });
     return chain.then(function () { return results; });
@@ -218,7 +230,7 @@
     };
   }
 
-  function personColor(i) { return "var(--p" + Math.min(i + 1, 5) + ")"; }
+  function personColor(i) { return "var(--p" + Math.min(i + 1, 7) + ")"; }
 
   function personLabel(s, i) {
     var name = esc(s.cfg.label);
@@ -226,7 +238,7 @@
     return '<span class="a1001c-person"><span class="a1001c-dot" style="background:' + personColor(i) + '"></span>' + name + "</span>";
   }
 
-  function render(root, entries) {
+  function render(root, entries, pending, failed) {
     var people = entries.map(summarize);
     var maxHeard = Math.max.apply(null, people.map(function (p) { return p.heard; }).concat([1]));
 
@@ -285,6 +297,12 @@
     });
     html += "</tbody></table></div>";
 
+    if (pending > 0) {
+      html += '<div class="a1001c-note">Loading ' + pending + ' more ' + (pending === 1 ? "person" : "people") + "… (the album API only allows a few requests a minute — they’ll appear shortly.)</div>";
+    }
+    if (failed && failed.length) {
+      html += '<div class="a1001c-note">Couldn’t load: ' + esc(failed.join(", ")) + ". They’ll be back on the next visit.</div>";
+    }
     html += '<div class="a1001c-note">Data from 1001albumsgenerator.com, refreshed at most every 10 minutes.</div>';
 
     root.innerHTML = html;
@@ -300,10 +318,12 @@
     document.head.appendChild(style);
 
     root.innerHTML = '<p class="a1001c-error">Loading everyone’s progress…</p>';
-    fetchAll(PROJECTS).then(function (entries) {
-      render(root, entries);
-    }).catch(function (err) {
-      root.innerHTML = '<p class="a1001c-error">Couldn’t load the comparison (' + esc(err.message) + "). It’ll retry next page load.</p>";
+    fetchAll(PROJECTS, function (entries, pending, failed) {
+      if (entries.length) render(root, entries, pending, failed);
+    }).then(function (entries) {
+      if (!entries.length) {
+        root.innerHTML = '<p class="a1001c-error">Couldn’t load the comparison right now. It’ll retry next page load.</p>';
+      }
     });
   }
 
