@@ -185,7 +185,11 @@
       }
     } catch (e) { /* ignore bad cache */ }
 
-    return fetch(API_BASE + encodeURIComponent(project)).then(function (res) {
+    // no-store bypasses the browser's HTTP cache: the API sends an ETag but no
+    // Cache-Control, so the default fetch cache can serve a stale response for
+    // whichever project's page is reloaded most. Our localStorage layer still
+    // caps how often we actually hit the network.
+    return fetch(API_BASE + encodeURIComponent(project), { cache: "no-store" }).then(function (res) {
       if (!res.ok) throw new Error("API responded " + res.status);
       return res.json();
     }).then(function (data) {
